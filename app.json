@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Belote",
+    "slug": "belote",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": { "image": "./assets/splash.png", "resizeMode": "contain", "backgroundColor": "#2563EB" },
+    "scheme": "sallycards",
+    "ios": { "bundleIdentifier": "com.sallycards.belote", "supportsTablet": true },
+    "android": { "package": "com.sallycards.belote", "adaptiveIcon": { "foregroundImage": "./assets/adaptive-icon.png", "backgroundColor": "#2563EB" }, "usesCleartextTraffic": true },
+    "plugins": ["expo-router", "expo-localization", "expo-font"],
+    "newArchEnabled": true, "extra": { "eas": { "projectId": "sallycards-belote" }, "usesCleartextTraffic": true }
+  }
+}
