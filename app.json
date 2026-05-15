@@ -5,11 +5,56 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "splash": { "image": "./assets/splash.png", "resizeMode": "contain", "backgroundColor": "#2563EB" },
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#2563EB"
+    },
     "scheme": "sallycards",
-    "ios": { "bundleIdentifier": "com.sallycards.belote", "supportsTablet": true },
-    "android": { "package": "com.sallycards.belote", "adaptiveIcon": { "foregroundImage": "./assets/adaptive-icon.png", "backgroundColor": "#2563EB" }, "usesCleartextTraffic": true },
-    "plugins": ["expo-router", "expo-localization", "expo-font"],
-    "newArchEnabled": true, "extra": { "eas": { "projectId": "sallycards-belote" }, "usesCleartextTraffic": true }
+    "ios": {
+      "bundleIdentifier": "com.sallycards.belote",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Belote utilise votre position pour la carte des hkim."
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyAa1lBSroSXA-Om4mio84-SWAcmzQgYv8w"
+      }
+    },
+    "android": {
+      "package": "com.sallycards.belote",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#2563EB"
+      },
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAa1lBSroSXA-Om4mio84-SWAcmzQgYv8w"
+        }
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-localization",
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Belote utilise votre position pour la carte des hkim."
+        }
+      ]
+    ],
+    "newArchEnabled": true,
+    "extra": {
+      "eas": {
+        "projectId": "sallycards-belote"
+      },
+      "usesCleartextTraffic": true
+    }
   }
 }
