@@ -11,7 +11,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ImageBackground,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,7 +21,6 @@ import { useTheme } from '../../src/contexts/AppProviders';
 import { logger } from '../../src/utils/logger';
 import * as api from '../../shared/api';
 
-const HERO = require('../../assets/hero/profile-chips.jpg');
 const log = logger.scoped('ProfileScreen');
 
 function StatCard({ icon, label, value, color, palette }: any) {
@@ -120,12 +118,17 @@ export default function ProfileScreen() {
       <AppHeader title={t('profile') ?? 'Profil'} />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Hero + avatar */}
-        <ImageBackground source={HERO} style={styles.hero} imageStyle={styles.heroImg}>
-          <LinearGradient
-            colors={['rgba(124,58,237,0.25)', 'rgba(10,10,26,0.85)']}
-            style={StyleSheet.absoluteFill}
-          />
+        {/* Hero + avatar (gradient design — sans photo) */}
+        <LinearGradient
+          colors={['#3730A3', '#7C3AED', '#0A1F44']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          <Text style={[styles.heroSuit, { top: 6, left: 24, fontSize: 70, color: 'rgba(255,255,255,0.07)' }]}>♠</Text>
+          <Text style={[styles.heroSuit, { top: 18, right: 30, fontSize: 56, color: 'rgba(239,68,68,0.12)' }]}>♥</Text>
+          <Text style={[styles.heroSuit, { bottom: 8, left: 50, fontSize: 48, color: 'rgba(239,68,68,0.10)' }]}>♦</Text>
+          <Text style={[styles.heroSuit, { bottom: 14, right: 60, fontSize: 60, color: 'rgba(255,255,255,0.06)' }]}>♣</Text>
           <View style={styles.avatarWrap}>
             <LinearGradient colors={palette.accentGradient} style={styles.avatarRing}>
               <View style={styles.avatarInner}>
@@ -148,11 +151,17 @@ export default function ProfileScreen() {
               <Text style={styles.rankBadgeText}>Rang #{rank.rank} · top {100 - rank.percentile}%</Text>
             </View>
           )}
-          <TouchableOpacity style={styles.editButton} onPress={() => router.push('/settings')}>
-            <Ionicons name="pencil" size={12} color="#fff" />
-            <Text style={styles.editButtonText}>{t('edit')}</Text>
-          </TouchableOpacity>
-        </ImageBackground>
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+            <TouchableOpacity style={styles.editButton} onPress={() => router.push('/profile/edit')}>
+              <Ionicons name="pencil" size={12} color="#fff" />
+              <Text style={styles.editButtonText}>{t('edit')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.editButton, { backgroundColor: 'rgba(255,255,255,0.18)' }]} onPress={() => router.push('/settings')}>
+              <Ionicons name="settings-outline" size={12} color="#fff" />
+              <Text style={styles.editButtonText}>{t('settings') ?? 'Paramètres'}</Text>
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
 
         {/* Coins + Diamonds */}
         <View style={{ flexDirection: 'row', gap: 10, marginHorizontal: 14, marginTop: 10 }}>
@@ -259,8 +268,8 @@ function createStyles(palette: ReturnType<typeof useTheme>['palette']) {
     container: { flex: 1, backgroundColor: palette.bg },
     scrollContent: { padding: 0, paddingBottom: 40 },
 
-    hero: { height: 260, alignItems: 'center', justifyContent: 'center', paddingTop: 16 },
-    heroImg: { opacity: 0.95 },
+    hero: { height: 260, alignItems: 'center', justifyContent: 'center', paddingTop: 16, overflow: 'hidden', position: 'relative' },
+    heroSuit: { position: 'absolute', fontWeight: '900' },
     avatarWrap: { marginBottom: 8 },
     avatarRing: {
       width: 92, height: 92, borderRadius: 46,

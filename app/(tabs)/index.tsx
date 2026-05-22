@@ -13,7 +13,6 @@ import {
   ScrollView,
   RefreshControl,
   Alert,
-  ImageBackground,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,7 +23,6 @@ import { useTheme } from '../../src/contexts/AppProviders';
 import { logger } from '../../src/utils/logger';
 import * as api from '../../shared/api';
 
-const HERO_IMG = require('../../assets/hero/home-table.jpg');
 const log = logger.scoped('HomeScreen');
 
 export default function HomeScreen() {
@@ -106,10 +104,18 @@ export default function HomeScreen() {
         title="Belote"
         subtitle="Bluff · Stratégie · Victoire"
         rightSlot={
-          <TouchableOpacity onPress={() => router.push('/shop')} style={styles.coinsHeader}>
-            <Ionicons name="wallet" size={16} color="#F59E0B" />
-            <Text style={styles.coinsHeaderText}>{(user as any)?.coins ?? 0}</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <TouchableOpacity onPress={() => router.push('/notifications/inbox')} style={styles.headerIconBtn}>
+              <Ionicons name="notifications-outline" size={18} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/friends')} style={styles.headerIconBtn}>
+              <Ionicons name="people-outline" size={18} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/shop')} style={styles.coinsHeader}>
+              <Ionicons name="wallet" size={16} color="#F59E0B" />
+              <Text style={styles.coinsHeaderText}>{(user as any)?.coins ?? 0}</Text>
+            </TouchableOpacity>
+          </View>
         }
       />
 
@@ -117,12 +123,19 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.accent} />}
       >
-        {/* Hero photo */}
-        <ImageBackground source={HERO_IMG} style={styles.hero} imageStyle={styles.heroImg}>
-          <LinearGradient
-            colors={['rgba(10,10,26,0.1)', 'rgba(10,10,26,0.85)']}
-            style={StyleSheet.absoluteFill}
-          />
+        {/* Hero design (gradient + motifs de cartes — sans photo) */}
+        <LinearGradient
+          colors={['#1E3A8A', '#3730A3', '#0A1F44']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          {/* Enseignes décoratives en filigrane */}
+          <Text style={[styles.heroSuit, { top: -10, right: 60, fontSize: 130, color: 'rgba(255,255,255,0.06)' }]}>♠</Text>
+          <Text style={[styles.heroSuit, { top: 30, right: -8, fontSize: 90, color: 'rgba(239,68,68,0.12)' }]}>♥</Text>
+          <Text style={[styles.heroSuit, { bottom: -20, right: 90, fontSize: 80, color: 'rgba(255,255,255,0.05)' }]}>♣</Text>
+          <Text style={[styles.heroSuit, { bottom: 10, right: 30, fontSize: 60, color: 'rgba(239,68,68,0.10)' }]}>♦</Text>
+
           <View style={styles.heroBadge}>
             <Ionicons name="flame" size={14} color="#fff" />
             <Text style={styles.heroBadgeText}>{t('live')}</Text>
@@ -133,7 +146,7 @@ export default function HomeScreen() {
               {t('elo')} {user?.elo ?? 1000} · {(user as any)?.location?.city || t('defaultCity')}
             </Text>
           </View>
-        </ImageBackground>
+        </LinearGradient>
 
         {/* Create / Join */}
         <View style={styles.actionRow}>
@@ -171,6 +184,26 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Mode Coinche : enchères avancées + contrats */}
+        <TouchableOpacity
+          style={{ borderRadius: 16, overflow: 'hidden', marginTop: 10 }}
+          onPress={() => router.push('/game/coinche?difficulty=hard')}
+          activeOpacity={0.85}
+        >
+          <LinearGradient colors={['#7C2D12', '#DC2626']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ padding: 18, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <Ionicons name="flash" size={28} color="#fff" />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#fff', fontSize: 16, fontFamily: 'Inter-Black', letterSpacing: 0.5 }}>Coinche</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, fontFamily: 'Inter-SemiBold' }}>
+                Enchères 80→Capot + coinche x2/x4
+              </Text>
+            </View>
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
+              <Text style={{ color: '#fff', fontSize: 10, fontFamily: 'Inter-Black', letterSpacing: 1 }}>PRO</Text>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
         {/* Simulation — 2 à 10 joueurs simulés depuis la DB */}
         <TouchableOpacity style={{ borderRadius: 16, overflow: 'hidden', marginTop: 10 }} onPress={handleSimulate} activeOpacity={0.85}>
           <LinearGradient colors={['#EC4899', '#8B5CF6']} start={{x:0,y:0}} end={{x:1,y:1}} style={{ padding: 18, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
@@ -185,6 +218,52 @@ export default function HomeScreen() {
               <Text style={{ color: '#fff', fontSize: 10, fontFamily: 'Inter-Black', letterSpacing: 1 }}>{t('new')}</Text>
             </View>
           </LinearGradient>
+        </TouchableOpacity>
+
+        {/* Raccourcis : sport challenges, amis, récompenses, notifications */}
+        <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>{t('sectionMore')}</Text>
+        <View style={styles.shortcutsGrid}>
+          <TouchableOpacity style={styles.shortcutCard} onPress={() => router.push('/challenge/create')} activeOpacity={0.85}>
+            <LinearGradient colors={['#22C55E', '#16A34A']} style={styles.shortcutGrad}>
+              <Ionicons name="football-outline" size={22} color="#fff" />
+              <Text style={styles.shortcutLabel}>{t('shortcutSportChallenge')}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.shortcutCard} onPress={() => router.push('/friends')} activeOpacity={0.85}>
+            <LinearGradient colors={['#3B82F6', '#1D4ED8']} style={styles.shortcutGrad}>
+              <Ionicons name="people-outline" size={22} color="#fff" />
+              <Text style={styles.shortcutLabel}>{t('shortcutFriends')}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.shortcutCard} onPress={() => router.push('/rewards')} activeOpacity={0.85}>
+            <LinearGradient colors={['#F59E0B', '#D97706']} style={styles.shortcutGrad}>
+              <Ionicons name="gift-outline" size={22} color="#fff" />
+              <Text style={styles.shortcutLabel}>{t('shortcutRewards')}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.shortcutCard} onPress={() => router.push('/notifications/inbox')} activeOpacity={0.85}>
+            <LinearGradient colors={['#A855F7', '#7C3AED']} style={styles.shortcutGrad}>
+              <Ionicons name="notifications-outline" size={22} color="#fff" />
+              <Text style={styles.shortcutLabel}>{t('shortcutInbox')}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.shortcutCard} onPress={() => router.push('/tournament/list')} activeOpacity={0.85}>
+            <LinearGradient colors={['#EAB308', '#CA8A04']} style={styles.shortcutGrad}>
+              <Ionicons name="trophy-outline" size={22} color="#fff" />
+              <Text style={styles.shortcutLabel}>Tournois</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.shortcutCard} onPress={() => router.push('/leaderboard-period')} activeOpacity={0.85}>
+            <LinearGradient colors={['#0EA5E9', '#0284C7']} style={styles.shortcutGrad}>
+              <Ionicons name="podium-outline" size={22} color="#fff" />
+              <Text style={styles.shortcutLabel}>Classements</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity style={styles.historyRow} onPress={() => router.push('/challenge/history')} activeOpacity={0.7}>
+          <Ionicons name="time-outline" size={16} color={palette.textSecondary} />
+          <Text style={[styles.historyText, { color: palette.textSecondary }]}>{t('shortcutHistorySport')}</Text>
+          <Ionicons name="chevron-forward" size={14} color={palette.textSecondary} />
         </TouchableOpacity>
 
         {/* Daily challenge details */}
@@ -247,9 +326,35 @@ function createStyles(palette: ReturnType<typeof useTheme>['palette']) {
       borderWidth: 1, borderColor: 'rgba(245,158,11,0.4)',
     },
     coinsHeaderText: { color: '#F59E0B', fontSize: 13, fontFamily: 'Inter-Black' },
+    headerIconBtn: {
+      width: 32, height: 32, borderRadius: 16,
+      alignItems: 'center', justifyContent: 'center',
+      backgroundColor: 'rgba(255,255,255,0.08)',
+      borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+    },
 
-    hero: { height: 150, borderRadius: 18, overflow: 'hidden', justifyContent: 'flex-end' },
-    heroImg: { borderRadius: 18 },
+    sectionLabel: {
+      fontSize: 11, fontFamily: 'Inter-Bold', letterSpacing: 1,
+      textTransform: 'uppercase', marginTop: 18, marginBottom: 8,
+    },
+    shortcutsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    shortcutCard: { width: '48%', borderRadius: 14, overflow: 'hidden' },
+    shortcutGrad: {
+      paddingVertical: 16, paddingHorizontal: 12,
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+    },
+    shortcutLabel: { color: '#fff', fontSize: 13, fontFamily: 'Inter-Bold' },
+    historyRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      paddingVertical: 12, paddingHorizontal: 14,
+      marginTop: 10, borderRadius: 12,
+      backgroundColor: 'rgba(255,255,255,0.04)',
+      borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    },
+    historyText: { flex: 1, fontSize: 12, fontFamily: 'Inter-SemiBold' },
+
+    hero: { height: 158, borderRadius: 20, overflow: 'hidden', justifyContent: 'flex-end', position: 'relative' },
+    heroSuit: { position: 'absolute', fontWeight: '900' },
     heroBadge: {
       position: 'absolute', top: 12, right: 12,
       flexDirection: 'row', alignItems: 'center', gap: 4,

@@ -33,8 +33,21 @@ import AnimatedCard from '../../src/components/AnimatedCard';
 import { useTheme } from '../../src/contexts/AppProviders';
 import { logger } from '../../src/utils/logger';
 import { APP_CONFIG } from '../../src/config/app.config';
-import { SOCKET_URL } from '../../shared/api';
+import { getSocketUrl } from '../../shared/api';
 import * as Engine from '../../src/game/beloteEngine';
+import { detectAnnonces, hasBelote, Annonce } from '../../src/game/beloteEngine.advanced';
+
+function annonceLabel(a: Annonce): string {
+  switch (a.type) {
+    case 'tierce': return 'Tierce';
+    case 'cinquante': return 'Cinquante';
+    case 'cent': return 'Cent';
+    case 'carre-valets': return 'Carré de Valets';
+    case 'carre-neufs': return 'Carré de Neufs';
+    case 'carre-autres': return 'Carré';
+    case 'belote': return 'Belote';
+  }
+}
 
 const log = logger.scoped('GameScreen');
 const ME = 'p1';
@@ -192,12 +205,21 @@ const styles = StyleSheet.create({
 });
 
 // Hook : online sync via Socket.IO /game (best-effort, doesn't block UI)
-function useGameSocket(roomCode: string | undefined, onState: (s: any) => void) {
+function useGameSocket(
+  roomCode: string | undefined,
+  onState: (s: any) => void,
+  onAnnonce?: (p: { playerId: string; annonces: any[] }) => void,
+  onBelote?: (p: { playerId: string; type: 'belote' | 'rebelote' }) => void,
+) {
   const socketRef = useRef<Socket | null>(null);
   const [connected, setConnected] = useState(false);
+  // Refs pour callbacks (évite reconnect quand parent re-render)
+  const onAnnonceRef = useRef(onAnnonce);
+  const onBeloteRef = useRef(onBelote);
+  useEffect(() => { onAnnonceRef.current = onAnnonce; onBeloteRef.current = onBelote; }, [onAnnonce, onBelote]);
   useEffect(() => {
     if (!roomCode) return;
-    const s = io(`${SOCKET_URL}/game`, { transports: ['websocket'], timeout: 4000 });
+    const s = io(`${getSocketUrl()}/game`, { transports: ['websocket'], timeout: 4000 });
     socketRef.current = s;
     s.on('connect', () => {
       setConnected(true);
@@ -208,6 +230,8 @@ function useGameSocket(roomCode: string | undefined, onState: (s: any) => void) 
       log.bout('game:state received', { phase: snapshot?.phase });
       onState(snapshot);
     });
+    s.on('game:annonce:declared', (p: any) => onAnnonceRef.current?.(p));
+    s.on('game:belote:declared', (p: any) => onBeloteRef.current?.(p));
     s.on('disconnect', () => setConnected(false));
     s.on('connect_error', (e: any) => log.warn('socket connect_error', e?.message));
     return () => { s.disconnect(); socketRef.current = null; };
@@ -215,7 +239,13 @@ function useGameSocket(roomCode: string | undefined, onState: (s: any) => void) 
   const emitMove = useCallback((action: any) => {
     socketRef.current?.emit('game:action', { roomCode, action });
   }, [roomCode]);
-  return { connected, emitMove };
+  const emitAnnonce = useCallback((annonces: any[]) => {
+    socketRef.current?.emit('game:annonce', { roomId: roomCode, annonces });
+  }, [roomCode]);
+  const emitBelote = useCallback((type: 'belote' | 'rebelote') => {
+    socketRef.current?.emit('game:belote', { roomId: roomCode, type });
+  }, [roomCode]);
+  return { connected, emitMove, emitAnnonce, emitBelote };
 }
 
 const HELP_TEXT = "Suivez la couleur demandée ou jouez l'atout. La plus haute carte gagne le pli.";
@@ -228,7 +258,7 @@ export default function GameScreen() {
   const { t } = useTranslation();
   const { palette } = useTheme();
 
-  const [state, dispatch] = useReducer(Engine.gameReducer as any, undefined, () => {
+  const [state, dispatch] = useReducer<React.Reducer<any, any>, undefined>(Engine.gameReducer as any, undefined as any, () => {
     let s: any = (Engine as any).initGame ? (Engine as any).initGame() : (Engine as any).createInitialState([]);
     const players = [
       { id: ME,  name: 'Vous',  isBot: false },
@@ -247,10 +277,37 @@ export default function GameScreen() {
   const current = (Engine as any).getCurrentPlayer ? (Engine as any).getCurrentPlayer(state) : null;
   const isMyTurn = current?.id === ME && !winner;
 
+  // === État reçu du serveur : annonces et belote des AUTRES joueurs ===
+  const [remoteAnnonces, setRemoteAnnonces] = useState<Array<{ playerId: string; annonces: any[] }>>([]);
+  const [remoteBeloteFlash, setRemoteBeloteFlash] = useState<{ playerName: string; type: string } | null>(null);
+
   // Online sync (best-effort, fall back to local)
-  const { connected, emitMove } = useGameSocket(roomCode as any, (snap) => {
-    if (snap) dispatch({ type: 'SYNC_FROM_SERVER', state: snap } as any);
-  });
+  const { connected, emitMove, emitAnnonce, emitBelote } = useGameSocket(
+    roomCode as any,
+    (snap) => {
+      if (snap) dispatch({ type: 'SYNC_FROM_SERVER', state: snap } as any);
+    },
+    (p) => {
+      // Un autre joueur a déclaré des annonces → afficher
+      setRemoteAnnonces((prev) => [...prev.filter((x) => x.playerId !== p.playerId), p]);
+    },
+    (p) => {
+      // Un autre joueur a posé Belote/Rebelote → flash toast
+      const player = state.players?.find((pp: any) => pp.id === p.playerId);
+      setRemoteBeloteFlash({ playerName: player?.name ?? 'Joueur', type: p.type });
+    },
+  );
+
+  // Auto-fade flash remote belote
+  useEffect(() => {
+    if (!remoteBeloteFlash) return;
+    const t = setTimeout(() => setRemoteBeloteFlash(null), 2200);
+    return () => clearTimeout(t);
+  }, [remoteBeloteFlash]);
+
+  // Réf pour ne pas spammer l'emit (une seule fois par manche-trump)
+  const lastAnnonceEmittedRef = useRef<string>('');
+  const lastBeloteEmittedRef = useRef<string>('');
 
   // Bot auto-play
   useEffect(() => {
@@ -279,6 +336,28 @@ export default function GameScreen() {
   const myHand = me?.hand ?? [];
   const tableCards = state.tableCards ?? state.table ?? [];
 
+  // === Annonces + Belote détectées dans la main du joueur (client-only) ===
+  // Affichage personnel et indicatif — pas synchronisé avec le serveur.
+  const myAnnonces: Annonce[] = React.useMemo(() => {
+    if (!me || !state.trumpSuit) return [];
+    try { return detectAnnonces(me, state.trumpSuit); } catch { return []; }
+  }, [me?.hand?.length, state.trumpSuit]);
+  const meHasBelote: boolean = React.useMemo(() => {
+    if (!me || !state.trumpSuit) return false;
+    try { return hasBelote(me, state.trumpSuit); } catch { return false; }
+  }, [me?.hand?.length, state.trumpSuit]);
+
+  // === Émission vers serveur : annonces personnelles (une fois / manche) ===
+  useEffect(() => {
+    if (!emitAnnonce) return;
+    if (!state.trumpSuit) return;
+    if (myAnnonces.length === 0) return;
+    const key = `${state.trumpSuit}-${state.roundNumber ?? state.tricks?.length ?? 0}`;
+    if (lastAnnonceEmittedRef.current === key) return;
+    lastAnnonceEmittedRef.current = key;
+    emitAnnonce(myAnnonces.map((a) => ({ type: a.type, points: a.points })));
+  }, [myAnnonces, state.trumpSuit, emitAnnonce]);
+
   const playCard = useCallback((cardId: string) => {
     if (!isMyTurn) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -286,12 +365,25 @@ export default function GameScreen() {
     dispatch(action);
     emitMove(action);
     setMoveLog(l => [...l, { icon: '👤', who: 'Vous', what: 'avez posé une carte' }]);
+
+    // === Détection Belote/Rebelote sur le coup courant ===
+    const playedCard = myHand.find((h: any) => h.id === cardId);
+    if (playedCard && state.trumpSuit && meHasBelote
+        && playedCard.suit === state.trumpSuit
+        && (playedCard.value === 11 || playedCard.value === 12)) {
+      const key = `${state.trumpSuit}-${state.roundNumber ?? 0}`;
+      const type: 'belote' | 'rebelote' = lastBeloteEmittedRef.current === key ? 'rebelote' : 'belote';
+      lastBeloteEmittedRef.current = key;
+      emitBelote(type);
+      setToast({ msg: type === 'belote' ? '👑 Belote !' : '👑 Rebelote !', color: '#F59E0B', key: Date.now() });
+    }
+
     // Toast capture detection (best-effort)
     if (tableCards.find((c: any) => myHand.find((h: any) => h.id === cardId)?.value === c.value)) {
       setToast({ msg: FEEDBACK_CAPTURE, color: '#10B981', key: Date.now() });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     }
-  }, [isMyTurn, tableCards, myHand, emitMove]);
+  }, [isMyTurn, tableCards, myHand, emitMove, emitBelote, state.trumpSuit, state.roundNumber, meHasBelote]);
 
   const restart = useCallback(() => {
     let s: any = (Engine as any).initGame ? (Engine as any).initGame() : (Engine as any).createInitialState([]);
@@ -318,6 +410,49 @@ export default function GameScreen() {
         <AvatarRow players={state.players} currentId={current?.id} palette={palette} />
         <PhaseBanner phase={state.phase} current={current} isMyTurn={isMyTurn} winner={winner} palette={palette} />
         <HelpChip palette={palette} text={HELP_TEXT} />
+
+        {/* Annonces personnelles (Tierce/Cinquante/Cent/Carrés) — client-only */}
+        {myAnnonces.length > 0 && (
+          <View style={localStyles.annoncesBar}>
+            <Ionicons name="trophy" size={14} color="#F59E0B" />
+            <Text style={localStyles.annoncesBarText}>
+              Vos annonces : {myAnnonces.map((a) => `${annonceLabel(a)} (+${a.points})`).join(' · ')}
+            </Text>
+          </View>
+        )}
+        {/* Indicateur Belote disponible (R+D atout en main) */}
+        {meHasBelote && (
+          <View style={[localStyles.annoncesBar, { borderColor: '#DC2626', backgroundColor: 'rgba(220,38,38,0.15)' }]}>
+            <Ionicons name="heart" size={14} color="#DC2626" />
+            <Text style={localStyles.annoncesBarText}>
+              Belote disponible : pose Valet et Roi d'atout pour +20 pts
+            </Text>
+          </View>
+        )}
+
+        {/* === Annonces déclarées par d'autres joueurs (via socket) === */}
+        {remoteAnnonces.length > 0 && remoteAnnonces.map((ra) => {
+          const player = state.players?.find((pp: any) => pp.id === ra.playerId);
+          if (!player || ra.annonces.length === 0) return null;
+          return (
+            <View key={ra.playerId} style={[localStyles.annoncesBar, { borderColor: '#3B82F6', backgroundColor: 'rgba(59,130,246,0.12)' }]}>
+              <Ionicons name="megaphone" size={14} color="#3B82F6" />
+              <Text style={localStyles.annoncesBarText}>
+                {player.name} déclare : {ra.annonces.map((a: any) => `${a.type} (+${a.points})`).join(' · ')}
+              </Text>
+            </View>
+          );
+        })}
+
+        {/* === Flash Belote/Rebelote d'un autre joueur === */}
+        {remoteBeloteFlash && (
+          <View style={[localStyles.annoncesBar, { borderColor: '#F59E0B', backgroundColor: 'rgba(245,158,11,0.25)' }]}>
+            <Ionicons name="flash" size={14} color="#F59E0B" />
+            <Text style={[localStyles.annoncesBarText, { fontFamily: 'Inter-Black' }]}>
+              {remoteBeloteFlash.playerName} : {remoteBeloteFlash.type === 'belote' ? '👑 Belote !' : '👑 Rebelote !'}
+            </Text>
+          </View>
+        )}
 
         {/* Table */}
         <LinearGradient
@@ -409,4 +544,13 @@ const localStyles = StyleSheet.create({
   handTitle: { fontSize: 14, fontFamily: 'Inter-Bold', marginTop: 12, marginBottom: 8 },
   handScroll: { paddingVertical: 6, paddingHorizontal: 4, gap: 8 },
   handSlot: { marginHorizontal: 4 },
+  annoncesBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(245,158,11,0.15)',
+    borderWidth: 1, borderColor: 'rgba(245,158,11,0.4)',
+    marginBottom: 8,
+  },
+  annoncesBarText: { color: '#fff', fontSize: 11, fontFamily: 'Inter-SemiBold', flex: 1 },
 });

@@ -1,52 +1,17 @@
-import { Platform } from 'react-native';
-import Constants from 'expo-constants';
+import { getApiUrl, getSocketUrl, getEnvName } from './env';
 
-/**
- * Résout l'URL de l'API dynamiquement :
- *   1. Si EXPO_PUBLIC_API_URL est défini → l'utilise tel quel
- *   2. Sinon, utilise l'IP de Metro (debuggerHost) + port 3000
- *      → l'IP suit automatiquement le Wi-Fi (pas besoin d'éditer .env)
- *   3. Fallback localhost pour le web ou quand rien n'est détecté
- */
-function resolveApiUrl(): string {
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
-  }
-  // hostUri ressemble à "192.168.1.12:8081" en dev
-  const hostUri =
-    (Constants as any).expoConfig?.hostUri ||
-    (Constants as any).manifest?.debuggerHost ||
-    (Constants as any).manifest2?.extra?.expoGo?.debuggerHost;
-  if (hostUri) {
-    const host = String(hostUri).split(':')[0];
-    if (host) return `http://${host}:3000/api/v1`;
-  }
-  return 'http://localhost:3000/api/v1';
-}
+// URL résolue DYNAMIQUEMENT à chaque appel via env.ts (toggle Local/Prod
+// runtime depuis Réglages). On ré-exporte les getters pour les consommateurs
+// (sockets, TURN). `SOCKET_URL` reste exporté pour rétro-compat (valeur au
+// chargement) mais les écrans temps réel doivent appeler getSocketUrl().
+export { getApiUrl, getSocketUrl, getEnvName, getTurnHost, getEnv, setEnvName, onEnvChange, hydrateEnvName } from './env';
+export type { EnvName, EnvConfig } from './env';
 
-const API_URL = resolveApiUrl();
-
-/** Même logique pour le socket-server (port 3001). */
-function resolveSocketUrl(): string {
-  if (process.env.EXPO_PUBLIC_SOCKET_URL) {
-    return process.env.EXPO_PUBLIC_SOCKET_URL;
-  }
-  const hostUri =
-    (Constants as any).expoConfig?.hostUri ||
-    (Constants as any).manifest?.debuggerHost ||
-    (Constants as any).manifest2?.extra?.expoGo?.debuggerHost;
-  if (hostUri) {
-    const host = String(hostUri).split(':')[0];
-    if (host) return `http://${host}:3001`;
-  }
-  return 'http://localhost:3001';
-}
-
-export const SOCKET_URL = resolveSocketUrl();
+/** @deprecated utilise getSocketUrl() pour la valeur live (toggle runtime). */
+export const SOCKET_URL = getSocketUrl();
 
 if (__DEV__) {
-  console.log('[api] API →', API_URL);
-  console.log('[api] Socket →', SOCKET_URL);
+  console.log('[api] env →', getEnvName(), '| API →', getApiUrl(), '| Socket →', getSocketUrl());
 }
 
 // In-memory token storage
@@ -98,10 +63,10 @@ async function fetchWithToken(
   endpoint: string,
   options: RequestInit = {}
 ) {
-  const url = `${API_URL}${endpoint}`;
-  const headers: HeadersInit = {
+  const url = `${getApiUrl()}${endpoint}`;
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...(options.headers as Record<string, string>),
   };
 
   if (authToken) {
@@ -134,6 +99,88 @@ async function fetchWithToken(
   }
 }
 
+// ============================================================
+// Generic REST helpers (get/post/patch/put/del/upload)
+// Utilisés par les écrans challenge/friends/rewards/notifications/profile.
+// Ils délèguent à fetchWithToken (auth + unwrap { success, data } gérés).
+// ============================================================
+
+export async function get<T = any>(endpoint: string): Promise<T> {
+  return fetchWithToken(endpoint, { method: 'GET' }) as Promise<T>;
+}
+
+export async function post<T = any>(endpoint: string, body?: any): Promise<T> {
+  return fetchWithToken(endpoint, {
+    method: 'POST',
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  }) as Promise<T>;
+}
+
+export async function patch<T = any>(endpoint: string, body?: any): Promise<T> {
+  return fetchWithToken(endpoint, {
+    method: 'PATCH',
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  }) as Promise<T>;
+}
+
+export async function put<T = any>(endpoint: string, body?: any): Promise<T> {
+  return fetchWithToken(endpoint, {
+    method: 'PUT',
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  }) as Promise<T>;
+}
+
+export async function del<T = any>(endpoint: string): Promise<T> {
+  return fetchWithToken(endpoint, { method: 'DELETE' }) as Promise<T>;
+}
+
+// ── TURN / STUN (WebRTC multijoueur voix/vidéo) ─────────────────────────────
+export interface IceServer { urls: string | string[]; username?: string; credential?: string }
+export interface TurnCredentials { iceServers: IceServer[]; ttlExpiresAt: number }
+
+/**
+ * Récupère les credentials TURN tournants (HMAC, exp 24h) depuis l'API.
+ * À passer directement à `new RTCPeerConnection({ iceServers })`.
+ * Fallback : STUN public Google si l'endpoint échoue (NAT simple OK).
+ */
+export async function getTurnCredentials(): Promise<TurnCredentials> {
+  try {
+    return await get<TurnCredentials>('/api/turn-creds');
+  } catch {
+    return {
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      ttlExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+    };
+  }
+}
+
+/**
+ * Upload multipart/form-data (ex: avatar). Ne PAS forcer Content-Type :
+ * fetch le règle automatiquement avec le boundary multipart.
+ */
+export async function upload<T = any>(endpoint: string, form: FormData): Promise<T> {
+  const url = `${getApiUrl()}${endpoint}`;
+  const headers: Record<string, string> = {};
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+  try {
+    const response = await fetch(url, { method: 'POST', headers, body: form as any });
+    if (!response.ok) {
+      let message = `API error: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.error?.message) message = errorData.error.message;
+        else if (errorData.message) message = errorData.message;
+      } catch {}
+      throw new Error(message);
+    }
+    const json = await response.json();
+    return (json.data !== undefined ? json.data : json) as T;
+  } catch (error) {
+    console.error(`API upload failed: ${endpoint}`, error);
+    throw error;
+  }
+}
+
 // Authentication APIs
 export async function login(email: string, password: string, options?: { gameType?: string }) {
   try {
@@ -152,6 +199,28 @@ export async function login(email: string, password: string, options?: { gameTyp
     return data;
   } catch (error) {
     console.error('Login failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Google Sign-In : envoie l'id_token Google au backend (/auth/google),
+ * qui le verifie via Google tokeninfo et retourne les tokens JWT SallyCards.
+ */
+export async function loginWithGoogle(
+  idToken: string,
+  options?: { gameType?: string }
+) {
+  try {
+    const data = await fetchWithToken('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ idToken, gameType: options?.gameType ?? 'belote' }),
+    });
+    if (data.accessToken) authToken = data.accessToken;
+    if (data.refreshToken) refreshToken = data.refreshToken;
+    return data;
+  } catch (error) {
+    console.error('Google login failed:', error);
     throw error;
   }
 }

@@ -19,6 +19,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'expo-router';
 import AppHeader from '../src/components/AppHeader';
 import { useTheme } from '../src/contexts/AppProviders';
 import { logger } from '../src/utils/logger';
@@ -30,8 +31,10 @@ const log = logger.scoped('ShopScreen');
 export default function ShopScreen() {
   const { t } = useTranslation();
   const { palette } = useTheme();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [packages, setPackages] = useState<api.ShopPackage[]>([]);
+  const [items, setItems] = useState<any[]>([]);
   const [user, setUser] = useState<api.User | null>(null);
   const [purchasing, setPurchasing] = useState<string | null>(null);
 
@@ -39,12 +42,14 @@ export default function ShopScreen() {
     log.screen('mounted');
     (async () => {
       try {
-        log.bin('GET /shop/packages');
+        log.bin('GET /shop/packages + /shop/items');
         const [pkgs, u] = await Promise.all([api.getShopPackages(), api.getMe()]);
         log.bout('200 /shop/packages', `${pkgs.length} packs`);
         log.explain('packages et utilisateur chargés — rendu de la boutique');
         setPackages(pkgs);
         setUser(u);
+        // Items cosmétiques (best-effort, non bloquant)
+        api.get<any[]>('/shop/items').then((it) => setItems(Array.isArray(it) ? it : [])).catch(() => {});
       } catch (e) {
         log.error('init shop failed', e);
       } finally {
@@ -119,6 +124,34 @@ export default function ShopScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
+          {/* Articles cosmétiques → fiche détail */}
+          {items.length > 0 && (
+            <View style={{ width: '100%', marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <Text style={{ color: palette.text, fontFamily: 'Inter-Bold', fontSize: 15 }}>Articles</Text>
+                <TouchableOpacity onPress={() => router.push('/shop/purchase-history')}>
+                  <Text style={{ color: palette.accent, fontSize: 12, fontFamily: 'Inter-SemiBold' }}>Mes achats</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+                {items.map((it) => (
+                  <TouchableOpacity
+                    key={it._id}
+                    onPress={() => router.push(`/shop/item-detail?id=${it._id}`)}
+                    activeOpacity={0.85}
+                    style={{ width: 130, backgroundColor: '#152A47', borderRadius: 14, padding: 12 }}
+                  >
+                    <Ionicons
+                      name={it.category === 'avatar' ? 'person-circle' : it.category === 'theme' ? 'color-palette' : it.category === 'deck' ? 'albums' : it.category === 'premium' ? 'star' : 'flash'}
+                      size={26} color="#FCD34D"
+                    />
+                    <Text numberOfLines={1} style={{ color: '#fff', fontFamily: 'Inter-Bold', fontSize: 13, marginTop: 8 }}>{it.name}</Text>
+                    <Text style={{ color: '#FCD34D', fontFamily: 'Inter-Black', fontSize: 14, marginTop: 4 }}>{Number(it.priceEur).toFixed(2)} €</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
           {packages.map((pkg) => {
             const total = (pkg.coins || 0) + (pkg.bonus || 0);
             const isBuying = purchasing === pkg.productId;

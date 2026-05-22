@@ -4,8 +4,8 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "build:dev": "eas build --profile development --platform all",
     "build:preview": "eas build --profile preview --platform all",
@@ -13,28 +13,21 @@
     "submit:android": "eas submit --platform android --profile production",
     "submit:ios": "eas submit --platform ios --profile production",
     "lint": "eslint .",
-    "test": "jest",
-    "deploy:phone": "powershell -ExecutionPolicy Bypass -File ./deploy-to-phone.ps1",
-    "deploy:phone:fast": "powershell -ExecutionPolicy Bypass -File ./deploy-to-phone.ps1 -SkipBundle",
-    "deploy:phone:clean": "powershell -ExecutionPolicy Bypass -File ./deploy-to-phone.ps1 -Clean",
-    "install:from-github": "powershell -ExecutionPolicy Bypass -File ./install-from-github.ps1",
-    "install:from-github:fast": "powershell -ExecutionPolicy Bypass -File ./install-from-github.ps1 -NoLogcat",
-    "watch": "powershell -ExecutionPolicy Bypass -File ./watch-and-install.ps1",
-    "watch:once": "powershell -ExecutionPolicy Bypass -File ./watch-and-install.ps1 -Once"
+    "test": "jest"
   },
   "dependencies": {
-    "@expo/vector-icons": "^14.0.0",
     "@react-native-async-storage/async-storage": "1.23.1",
+    "@react-native-google-signin/google-signin": "^13.1.0",
     "@react-navigation/native": "^7.0.0",
-    "ajv": "^8.17.0",
     "expo": "~52.0.0",
+    "expo-auth-session": "~6.0.3",
     "expo-camera": "~16.0.18",
     "expo-clipboard": "~7.0.1",
-    "expo-constants": "~17.0.0",
+    "expo-crypto": "~14.0.2",
     "expo-font": "~13.0.0",
     "expo-haptics": "~14.0.0",
+    "expo-image-picker": "~16.0.6",
     "expo-linear-gradient": "~14.0.2",
-    "expo-linking": "~7.0.5",
     "expo-localization": "~16.0.0",
     "expo-location": "~18.0.10",
     "expo-router": "~4.0.0",
@@ -42,13 +35,11 @@
     "expo-splash-screen": "~0.29.0",
     "expo-status-bar": "~2.0.0",
     "expo-web-browser": "~14.0.2",
-    "i18next": "^23.16.0",
     "react": "18.3.1",
-    "react-i18next": "^15.0.0",
     "react-native": "0.76.7",
-    "react-native-gesture-handler": "~2.21.0",
+    "react-native-gesture-handler": "~2.20.2",
     "react-native-reanimated": "~3.16.0",
-    "react-native-safe-area-context": "~4.14.0",
+    "react-native-safe-area-context": "4.12.0",
     "react-native-screens": "~4.4.0",
     "react-native-webrtc": "^124.0.7",
     "react-native-webview": "13.12.5",
@@ -62,7 +53,5 @@
     "jest-expo": "~52.0.0",
     "typescript": "~5.6.0"
   },
-  "overrides": {
-    "ajv": "^8.17.0"
-  }
+  "name": "belote"
 }
