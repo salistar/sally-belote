@@ -48,7 +48,14 @@
           "locationWhenInUsePermission": "Belote utilise votre position pour vous situer sur la carte des hkim."
         }
       ],
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "cameraPermission": "Belote utilise la caméra pour les appels vidéo entre joueurs.",
+          "microphonePermission": "Belote utilise le micro pour les appels audio entre joueurs."
+        }
+      ]
     ],
     "newArchEnabled": true,
     "extra": {
