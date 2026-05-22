@@ -129,7 +129,9 @@ export default function P2PCall({ roomCode, displayName, authToken, onClose }: P
       try {
         const creds = await getTurnCredentials();
         iceServersRef.current = creds.iceServers;
-        log.explain(`ICE servers SALISTAR chargés (${creds.iceServers.length})`);
+        const hasRelay = creds.iceServers.some((srv: any) => !!srv.credential);
+        const urlCount = creds.iceServers.reduce((n: number, s: any) => n + (Array.isArray(s.urls) ? s.urls.length : 1), 0);
+        log.explain(`ICE SALISTAR : ${urlCount} URL(s) · relay TURN ${hasRelay ? 'ACTIF ✅' : 'STUN seul (pas de relay)'}`);
       } catch {
         iceServersRef.current = [];
       }
