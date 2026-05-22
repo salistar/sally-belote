@@ -1,4 +1,4 @@
-import { getApiUrl, getSocketUrl, getEnvName, onEnvChange } from './env';
+import { getApiUrl, getSocketUrl, getEnvName, getTurnHost, onEnvChange } from './env';
 
 // URL résolue DYNAMIQUEMENT à chaque appel via env.ts (toggle Local/Prod
 // runtime depuis Réglages). On ré-exporte les getters pour les consommateurs
@@ -173,14 +173,14 @@ export interface TurnCredentials { iceServers: IceServer[]; ttlExpiresAt: number
 /**
  * Récupère les credentials TURN tournants (HMAC, exp 24h) depuis l'API.
  * À passer directement à `new RTCPeerConnection({ iceServers })`.
- * Fallback : STUN public Google si l'endpoint échoue (NAT simple OK).
+ * Fallback : STUN SALISTAR uniquement (jamais de STUN/TURN tiers).
  */
 export async function getTurnCredentials(): Promise<TurnCredentials> {
   try {
     return await get<TurnCredentials>('/api/turn-creds');
   } catch {
     return {
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      iceServers: [{ urls: `stun:${getTurnHost()}:3478` }],
       ttlExpiresAt: Math.floor(Date.now() / 1000) + 3600,
     };
   }
