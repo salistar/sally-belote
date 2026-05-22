@@ -36,7 +36,7 @@ import JitsiCall from '../../src/components/JitsiCall';
 import P2PCall from '../../src/components/P2PCall';
 import ExternalJitsiCall from '../../src/components/ExternalJitsiCall';
 import * as api from '../../shared/api';
-import { SOCKET_URL } from '../../shared/api';
+import { getSocketUrl } from '../../shared/api';
 import { useTranslation } from 'react-i18next';
 
 type CallMethod = 'jitsi-public' | 'webrtc-p2p' | 'jitsi-local';
@@ -55,7 +55,7 @@ export default function LobbyScreen() {
     if (process.env.EXPO_PUBLIC_JITSI_LOCAL_HOST) return process.env.EXPO_PUBLIC_JITSI_LOCAL_HOST;
     if (process.env.EXPO_PUBLIC_JITSI_HOST)       return process.env.EXPO_PUBLIC_JITSI_HOST;
     try {
-      const u = new URL(SOCKET_URL);
+      const u = new URL(getSocketUrl());
       return `${u.hostname}:8000`;  // HTTP port (pas 8443 HTTPS)
     } catch {
       return '192.168.0.148:8000';
@@ -101,7 +101,7 @@ export default function LobbyScreen() {
     const token = api.getAuthToken();
     if (token && code) {
       log.explain('connexion socket /lobby pour les updates temps réel');
-      const sock = io(`${SOCKET_URL}/lobby`, {
+      const sock = io(`${getSocketUrl()}/lobby`, {
         auth: { token },
         transports: ['websocket'],
       });

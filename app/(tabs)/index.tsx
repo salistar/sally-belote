@@ -77,11 +77,6 @@ export default function HomeScreen() {
     router.push('/game/local?mode=bot&botCount=1&difficulty=expert');
   };
 
-  const handleSimulate = () => {
-    log.screen('nav → /room/simulate');
-    router.push('/room/simulate');
-  };
-
   const handleChallenge = async () => {
     log.bin('POST /challenges/daily/belote/matchmake');
     try {
@@ -204,19 +199,17 @@ export default function HomeScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* Simulation — 2 à 10 joueurs simulés depuis la DB */}
-        <TouchableOpacity style={{ borderRadius: 16, overflow: 'hidden', marginTop: 10 }} onPress={handleSimulate} activeOpacity={0.85}>
-          <LinearGradient colors={['#EC4899', '#8B5CF6']} start={{x:0,y:0}} end={{x:1,y:1}} style={{ padding: 18, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-            <Ionicons name="videocam" size={28} color="#fff" />
+        {/* Règles du jeu */}
+        <TouchableOpacity style={{ borderRadius: 16, overflow: 'hidden', marginTop: 10 }} onPress={() => router.push('/rules')} activeOpacity={0.85}>
+          <LinearGradient colors={['#0EA5E9', '#2563EB']} start={{x:0,y:0}} end={{x:1,y:1}} style={{ padding: 18, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <Ionicons name="book" size={28} color="#fff" />
             <View style={{ flex: 1 }}>
-              <Text style={{ color: '#fff', fontSize: 16, fontFamily: 'Inter-Black', letterSpacing: 0.5 }}>{t('simulation')}</Text>
+              <Text style={{ color: '#fff', fontSize: 16, fontFamily: 'Inter-Black', letterSpacing: 0.5 }}>Règles de la Belote</Text>
               <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, fontFamily: 'Inter-SemiBold' }}>
-                {t('simulationSub')}
+                Distribution · atouts · annonces · scoring
               </Text>
             </View>
-            <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
-              <Text style={{ color: '#fff', fontSize: 10, fontFamily: 'Inter-Black', letterSpacing: 1 }}>{t('new')}</Text>
-            </View>
+            <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.8)" />
           </LinearGradient>
         </TouchableOpacity>
 

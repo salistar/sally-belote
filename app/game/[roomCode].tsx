@@ -33,7 +33,7 @@ import AnimatedCard from '../../src/components/AnimatedCard';
 import { useTheme } from '../../src/contexts/AppProviders';
 import { logger } from '../../src/utils/logger';
 import { APP_CONFIG } from '../../src/config/app.config';
-import { getSocketUrl } from '../../shared/api';
+import { getSocketUrl, getAuthToken } from '../../shared/api';
 import * as Engine from '../../src/game/beloteEngine';
 import { detectAnnonces, hasBelote, Annonce } from '../../src/game/beloteEngine.advanced';
 
@@ -219,7 +219,11 @@ function useGameSocket(
   useEffect(() => { onAnnonceRef.current = onAnnonce; onBeloteRef.current = onBelote; }, [onAnnonce, onBelote]);
   useEffect(() => {
     if (!roomCode) return;
-    const s = io(`${getSocketUrl()}/game`, { transports: ['websocket'], timeout: 4000 });
+    const s = io(`${getSocketUrl()}/game`, {
+      transports: ['websocket'],
+      timeout: 4000,
+      auth: { token: getAuthToken() },
+    });
     socketRef.current = s;
     s.on('connect', () => {
       setConnected(true);

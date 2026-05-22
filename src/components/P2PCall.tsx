@@ -24,7 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { io, Socket } from 'socket.io-client';
 import { logger } from '../utils/logger';
-import { SOCKET_URL } from '../../shared/api';
+import { getSocketUrl } from '../../shared/api';
 
 // expo-camera : import défensif
 let CameraView: any = null;
@@ -124,7 +124,7 @@ export default function P2PCall({ roomCode, displayName, authToken, simulatedPee
     setStatus('Connexion au signaling…');
     log.bin('connect socket /webrtc');
 
-    const sock = io(`${SOCKET_URL}/webrtc`, {
+    const sock = io(`${getSocketUrl()}/webrtc`, {
       auth: { token: authToken },
       transports: ['websocket'],
     });
