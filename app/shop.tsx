@@ -35,6 +35,7 @@ export default function ShopScreen() {
   const [loading, setLoading] = useState(true);
   const [packages, setPackages] = useState<api.ShopPackage[]>([]);
   const [items, setItems] = useState<any[]>([]);
+  const [vip, setVip] = useState<{ isVip: boolean; vipUntil: string | null } | null>(null);
   const [user, setUser] = useState<api.User | null>(null);
   const [purchasing, setPurchasing] = useState<string | null>(null);
 
@@ -48,8 +49,9 @@ export default function ShopScreen() {
         log.explain('packages et utilisateur chargés — rendu de la boutique');
         setPackages(pkgs);
         setUser(u);
-        // Items cosmétiques (best-effort, non bloquant)
+        // Items cosmétiques + statut VIP (best-effort, non bloquant)
         api.get<any[]>('/shop/items').then((it) => setItems(Array.isArray(it) ? it : [])).catch(() => {});
+        api.get<{ isVip: boolean; vipUntil: string | null }>('/shop/vip/status').then(setVip).catch(() => {});
       } catch (e) {
         log.error('init shop failed', e);
       } finally {
@@ -97,6 +99,34 @@ export default function ShopScreen() {
     );
   };
 
+  // Achat du Pass VIP (Sally Plus) — même flux RevenueCat stub que les coins.
+  const purchaseVip = (productId: string, label: string, priceEur: number) => {
+    Alert.alert(
+      'Sally Plus VIP',
+      `${label} — ${priceEur.toFixed(2)} €/${productId.includes('yearly') ? 'an' : 'mois'}\n\nSans pub · double daily reward · avatars exclusifs · tournois VIP · stats avancées.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'S\'abonner',
+          onPress: async () => {
+            setPurchasing(productId);
+            try {
+              // RevenueCat: await Purchases.purchasePackage(rcPackage) — stub ici.
+              const fakeId = `dev-vip-${Date.now()}`;
+              const out: any = await api.post('/shop/vip/confirm', { gameType: 'belote', productId, purchaseId: fakeId, platform: 'android' });
+              setVip({ isVip: true, vipUntil: out?.vipUntil ?? null });
+              Alert.alert('Bienvenue VIP 👑', 'Ton Pass Sally Plus est actif. Profite des avantages !');
+            } catch (e: any) {
+              Alert.alert(t('error'), e?.message || 'Abonnement impossible');
+            } finally {
+              setPurchasing(null);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const styles = createStyles(palette);
 
   return (
@@ -124,6 +154,49 @@ export default function ShopScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
+          {/* ── Pass VIP Sally Plus ── */}
+          <View style={{ width: '100%', marginBottom: 12 }}>
+            <LinearGradient colors={['#7C3AED', '#D4AF37']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 16, padding: 18 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="star" size={22} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 18, fontFamily: 'Inter-Black' }}>Sally Plus VIP</Text>
+                {vip?.isVip && (
+                  <View style={{ marginLeft: 'auto', backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 }}>
+                    <Text style={{ color: '#fff', fontSize: 10, fontFamily: 'Inter-Black' }}>ACTIF 👑</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 12, fontFamily: 'Inter-SemiBold', marginTop: 6 }}>
+                Sans pub · double daily reward · avatars exclusifs · tournois VIP · stats avancées
+              </Text>
+
+              {vip?.isVip ? (
+                <Text style={{ color: '#fff', fontSize: 13, fontFamily: 'Inter-Bold', marginTop: 12 }}>
+                  Actif jusqu'au {vip.vipUntil ? new Date(vip.vipUntil).toLocaleDateString('fr-FR') : '—'}
+                </Text>
+              ) : (
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
+                  <TouchableOpacity
+                    style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
+                    disabled={!!purchasing}
+                    onPress={() => purchaseVip('sally_plus_monthly', 'Mensuel', 4.99)}
+                  >
+                    <Text style={{ color: '#fff', fontFamily: 'Inter-Black', fontSize: 15 }}>4,99 €</Text>
+                    <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11 }}>par mois</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ flex: 1, backgroundColor: '#fff', borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
+                    disabled={!!purchasing}
+                    onPress={() => purchaseVip('sally_plus_yearly', 'Annuel', 39.99)}
+                  >
+                    <Text style={{ color: '#7C3AED', fontFamily: 'Inter-Black', fontSize: 15 }}>39,99 €</Text>
+                    <Text style={{ color: '#7C3AED', fontSize: 11, fontFamily: 'Inter-SemiBold' }}>par an · -33%</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </LinearGradient>
+          </View>
+
           {/* Articles cosmétiques → fiche détail */}
           {items.length > 0 && (
             <View style={{ width: '100%', marginBottom: 8 }}>
