@@ -32,35 +32,16 @@ import { io, Socket } from 'socket.io-client';
 import AppHeader from '../../src/components/AppHeader';
 import { useTheme } from '../../src/contexts/AppProviders';
 import { logger } from '../../src/utils/logger';
-import JitsiCall from '../../src/components/JitsiCall';
 import P2PCall from '../../src/components/P2PCall';
-import ExternalJitsiCall from '../../src/components/ExternalJitsiCall';
 import * as api from '../../shared/api';
-import { SOCKET_URL } from '../../shared/api';
+import { getSocketUrl } from '../../shared/api';
 import { useTranslation } from 'react-i18next';
-
-type CallMethod = 'jitsi-public' | 'webrtc-p2p' | 'jitsi-local';
 
 const log = logger.scoped('RoomLobby');
 
 export default function LobbyScreen() {
   const { t } = useTranslation();
-  const { code, simulated, method } = useLocalSearchParams<{ code: string; simulated?: string; method?: CallMethod }>();
-  const callMethod: CallMethod = (method || 'jitsi-public') as CallMethod;
-  // Jitsi local auto-détecte le LAN host (même IP que Metro → port 8443).
-  // Tu n'as donc plus besoin d'éditer .env quand le Wi-Fi change.
-  // Jitsi local via HTTP port 8000 (pas 8443 HTTPS) car WebView RN rejette
-  // les certs auto-signés et on ne peut pas bypass en Expo Go.
-  const jitsiLocalHost = (() => {
-    if (process.env.EXPO_PUBLIC_JITSI_LOCAL_HOST) return process.env.EXPO_PUBLIC_JITSI_LOCAL_HOST;
-    if (process.env.EXPO_PUBLIC_JITSI_HOST)       return process.env.EXPO_PUBLIC_JITSI_HOST;
-    try {
-      const u = new URL(SOCKET_URL);
-      return `${u.hostname}:8000`;  // HTTP port (pas 8443 HTTPS)
-    } catch {
-      return '192.168.0.148:8000';
-    }
-  })();
+  const { code, simulated } = useLocalSearchParams<{ code: string; simulated?: string }>();
   const router = useRouter();
   const { palette } = useTheme();
   const [room, setRoom] = useState<api.RoomFull | null>(null);
@@ -101,7 +82,7 @@ export default function LobbyScreen() {
     const token = api.getAuthToken();
     if (token && code) {
       log.explain('connexion socket /lobby pour les updates temps réel');
-      const sock = io(`${SOCKET_URL}/lobby`, {
+      const sock = io(`${getSocketUrl()}/lobby`, {
         auth: { token },
         transports: ['websocket'],
       });
@@ -136,9 +117,8 @@ export default function LobbyScreen() {
     };
   }, [fetchRoom]);
 
-  // Note: audio/vidéo est géré par <JitsiCall /> (WebView meet.jit.si) qui
-  // demande lui-même les permissions micro/caméra et gère mute/unmute dans
-  // son propre UI Jitsi. Pas besoin de streams natifs côté lobby.
+  // Note: audio/vidéo est géré par <P2PCall /> (WebRTC via TURN/STUN SALISTAR
+  // + signaling socket /webrtc). Pas besoin de streams natifs côté lobby.
 
   const handleShare = async (platform: string) => {
     if (!room) return;
@@ -241,45 +221,22 @@ export default function LobbyScreen() {
       />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-        {/* Call panel — composant choisi selon ?method=... */}
+        {/* Call panel — WebRTC P2P via TURN/STUN SALISTAR uniquement */}
         {callOpen ? (
           <View style={{ height: 420, margin: 12, borderRadius: 14, overflow: 'hidden' }}>
             {(() => {
-              // Prépare la liste des peers simulés pour les 3 composants call
               const peersForCall = (room.players || [])
                 .filter((p: any) => String(p.userId) !== String(me?.id))
                 .map((p: any) => ({
                   userId: String(p.userId),
                   username: p.username,
-                  isSimulated: !!p.isSimulated,
                   isHost: !!p.isHost,
                 }));
-              if (callMethod === 'webrtc-p2p') {
-                return (
-                  <P2PCall
-                    roomCode={room.code}
-                    displayName={me?.username || t('player')}
-                    authToken={api.getAuthToken() || ''}
-                    simulatedPeers={peersForCall}
-                    onClose={() => setCallOpen(false)}
-                  />
-                );
-              }
-              if (callMethod === 'jitsi-local') {
-                return (
-                  <ExternalJitsiCall
-                    roomCode={room.code}
-                    displayName={me?.username || t('player')}
-                    host={jitsiLocalHost}
-                    simulatedPeers={peersForCall}
-                    onClose={() => setCallOpen(false)}
-                  />
-                );
-              }
               return (
-                <JitsiCall
+                <P2PCall
                   roomCode={room.code}
                   displayName={me?.username || t('player')}
+                  authToken={api.getAuthToken() || ''}
                   simulatedPeers={peersForCall}
                   onClose={() => setCallOpen(false)}
                 />
@@ -293,11 +250,7 @@ export default function LobbyScreen() {
             style={{ margin: 12, borderRadius: 16, overflow: 'hidden' }}
           >
             <LinearGradient
-              colors={
-                callMethod === 'webrtc-p2p' ? ['#7C3AED', '#EC4899']
-                : callMethod === 'jitsi-local' ? ['#F59E0B', '#EF4444']
-                : ['#2563EB', '#06B6D4']
-              }
+              colors={['#7C3AED', '#EC4899']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={{ padding: 18, flexDirection: 'row', alignItems: 'center', gap: 12 }}
             >
@@ -307,9 +260,7 @@ export default function LobbyScreen() {
                   Ouvrir l'appel audio/vidéo
                 </Text>
                 <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, fontFamily: 'Inter-SemiBold' }}>
-                  {callMethod === 'webrtc-p2p' ? 'WebRTC P2P · notre TURN/STUN + socket signaling'
-                   : callMethod === 'jitsi-local' ? `Jitsi Local · ${jitsiLocalHost}`
-                   : 'Jitsi Public · meet.ffmuc.net (sans login)'}
+                  WebRTC P2P · TURN/STUN SALISTAR + signaling socket
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={22} color="#fff" />
@@ -317,7 +268,7 @@ export default function LobbyScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Avatars simples (tiles remplacent plus RTCView, la vidéo est dans Jitsi) */}
+        {/* Avatars simples (la vidéo est gérée par <P2PCall /> WebRTC SALISTAR) */}
         <View style={styles.tilesGrid}>
           {room.players.map((p) => (
             <View key={p.userId} style={[styles.tile, { borderColor: palette.border }]}>
@@ -454,7 +405,7 @@ export default function LobbyScreen() {
   );
 }
 
-// (VideoTile retiré — la vidéo est maintenant gérée par <JitsiCall /> via WebView)
+// (VideoTile retiré — la vidéo est gérée par <P2PCall /> WebRTC TURN/STUN SALISTAR)
 
 function createStyles(palette: ReturnType<typeof useTheme>['palette']) {
   return StyleSheet.create({

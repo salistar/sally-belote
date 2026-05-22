@@ -42,8 +42,8 @@ function RootStackInner() {
         <Stack.Screen name="game/vs-bot" />
         <Stack.Screen name="room/create" />
         <Stack.Screen name="room/join" />
-        <Stack.Screen name="room/simulate" />
         <Stack.Screen name="room/lobby" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="rules" />
         <Stack.Screen name="shop" options={{ presentation: 'modal' }} />
         <Stack.Screen name="scores" options={{ presentation: 'modal' }} />
         <Stack.Screen name="settings" options={{ presentation: 'modal' }} />

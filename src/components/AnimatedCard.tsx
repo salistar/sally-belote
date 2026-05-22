@@ -7,7 +7,7 @@ import {
   Image,
   Easing,
 } from 'react-native';
-import { Card } from '../game/kdoubEngine';
+import { Card } from '../game/beloteEngine';
 import { getCardImage, getCardBackImage } from '../game/cardAssets';
 
 interface AnimatedCardProps {
@@ -21,6 +21,17 @@ interface AnimatedCardProps {
   animateEntry?: boolean;
   entryDelay?: number;
   animateFlip?: boolean;
+  // --- API alternative (utilisée par l'écran de partie en ligne) ---
+  /** Valeur de carte (1..12). Combinée à `suit` pour retrouver l'image. */
+  value?: string | number;
+  /** Couleur longue ('bastos'|'copas'|'espadas'|'oros'). */
+  suit?: string;
+  /** Largeur explicite (prioritaire sur `size`). */
+  width?: number;
+  /** Hauteur explicite (prioritaire sur `size`). */
+  height?: number;
+  /** 'up' = face visible, 'down' = dos. Alternative à `faceDown`. */
+  facing?: 'up' | 'down';
 }
 
 const SIZES = {
@@ -28,6 +39,12 @@ const SIZES = {
   medium: { width: 70, height: 100 },
   large: { width: 90, height: 130 },
 };
+
+/** Construit l'id image ({valeur 2-digits}-{suite}) depuis value + suit. */
+function buildCardId(value?: string | number, suit?: string): string | null {
+  if (value == null || !suit) return null;
+  return `${String(value).padStart(2, '0')}-${suit}`;
+}
 
 export default function AnimatedCard({
   card,
@@ -40,11 +57,21 @@ export default function AnimatedCard({
   animateEntry = false,
   entryDelay = 0,
   animateFlip = false,
+  value,
+  suit,
+  width,
+  height,
+  facing,
 }: AnimatedCardProps) {
-  const dimensions = SIZES[size];
+  // Dimensions : width/height explicites prioritaires, sinon preset `size`.
+  const dimensions = (width && height) ? { width, height } : SIZES[size];
+  // faceDown dérivé de `facing` si fourni.
+  const isFaceDown = facing ? facing === 'down' : faceDown;
+  // id image : depuis `card` ou reconstruit depuis value+suit.
+  const resolvedId = card?.id ?? buildCardId(value, suit);
   const entryAnim = useRef(new Animated.Value(animateEntry ? 0 : 1)).current;
   const slideAnim = useRef(new Animated.Value(animateEntry ? 50 : 0)).current;
-  const flipAnim = useRef(new Animated.Value(faceDown ? 0 : 1)).current;
+  const flipAnim = useRef(new Animated.Value(isFaceDown ? 0 : 1)).current;
   const selectAnim = useRef(new Animated.Value(selected ? 1 : 0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -74,13 +101,13 @@ export default function AnimatedCard({
   useEffect(() => {
     if (animateFlip) {
       Animated.timing(flipAnim, {
-        toValue: faceDown ? 0 : 1,
+        toValue: isFaceDown ? 0 : 1,
         duration: 400,
         easing: Easing.inOut(Easing.ease),
         useNativeDriver: true,
       }).start();
     }
-  }, [faceDown, animateFlip]);
+  }, [isFaceDown, animateFlip]);
 
   // Selection animation
   useEffect(() => {
@@ -108,9 +135,9 @@ export default function AnimatedCard({
     }).start();
   };
 
-  const imageSource = faceDown || !card
+  const imageSource = isFaceDown || !resolvedId
     ? getCardBackImage()
-    : getCardImage(card.id);
+    : getCardImage(resolvedId);
 
   const translateY = Animated.add(
     slideAnim,

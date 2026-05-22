@@ -15,7 +15,7 @@
       "bundleIdentifier": "com.sallycards.belote",
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Belote utilise votre position pour la carte des hkim."
+        "NSLocationWhenInUseUsageDescription": "Belote utilise votre position pour vous situer sur la carte des hkim."
       },
       "config": {
         "googleMapsApiKey": "AIzaSyAa1lBSroSXA-Om4mio84-SWAcmzQgYv8w"
@@ -45,7 +45,15 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Belote utilise votre position pour la carte des hkim."
+          "locationWhenInUsePermission": "Belote utilise votre position pour vous situer sur la carte des hkim."
+        }
+      ],
+      "@react-native-google-signin/google-signin",
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "cameraPermission": "Belote utilise la caméra pour les appels vidéo entre joueurs.",
+          "microphonePermission": "Belote utilise le micro pour les appels audio entre joueurs."
         }
       ]
     ],
@@ -55,6 +63,7 @@
         "projectId": "sallycards-belote"
       },
       "usesCleartextTraffic": true
-    }
+    },
+    "owner": "idriss.kriouile"
   }
 }
