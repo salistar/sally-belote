@@ -1,4 +1,4 @@
-import { getApiUrl, getSocketUrl, getEnvName } from './env';
+import { getApiUrl, getSocketUrl, getEnvName, onEnvChange } from './env';
 
 // URL résolue DYNAMIQUEMENT à chaque appel via env.ts (toggle Local/Prod
 // runtime depuis Réglages). On ré-exporte les getters pour les consommateurs
@@ -17,6 +17,15 @@ if (__DEV__) {
 // In-memory token storage
 let authToken: string | null = null;
 let refreshToken: string | null = null;
+
+// Au changement d'environnement (Local↔Prod), le token courant a été émis par
+// l'AUTRE backend (JWT_SECRET différent) → invalide. On le purge pour forcer
+// une reconnexion propre sur le nouveau backend après reload.
+onEnvChange(() => {
+  authToken = null;
+  refreshToken = null;
+  if (__DEV__) console.log('[api] env changé → tokens purgés, reconnexion requise');
+});
 
 export interface User {
   id: string;
@@ -58,10 +67,13 @@ export interface Bot {
   level: 'easy' | 'medium' | 'hard' | 'expert';
 }
 
-// Utility function to handle fetch with error handling
+// Utility function to handle fetch with error handling.
+// `_isRetry` : interne — true quand on rejoue la requête après un refresh,
+// pour éviter une boucle infinie de refresh.
 async function fetchWithToken(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  _isRetry = false,
 ) {
   const url = `${getApiUrl()}${endpoint}`;
   const headers: Record<string, string> = {
@@ -78,6 +90,26 @@ async function fetchWithToken(
       ...options,
       headers,
     });
+
+    // ── Auto-refresh sur 401 ────────────────────────────────────────────
+    // Si l'access token est expiré/invalide, on tente UN refresh via le
+    // refresh token puis on rejoue la requête. Si le refresh échoue (ex.
+    // token issu d'un AUTRE backend après un switch Local↔Prod, ou refresh
+    // token expiré), refreshTokenAsync nettoie les tokens → le 401 remonte
+    // et les écrans renvoient vers l'écran de connexion.
+    if (
+      response.status === 401 &&
+      !_isRetry &&
+      refreshToken &&
+      !endpoint.startsWith('/auth/')
+    ) {
+      try {
+        await refreshTokenAsync();
+        return await fetchWithToken(endpoint, options, true);
+      } catch {
+        // refresh KO → tokens déjà nettoyés ; on laisse le 401 d'origine remonter
+      }
+    }
 
     if (!response.ok) {
       let message = `API error: ${response.status}`;
