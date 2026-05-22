@@ -14,6 +14,7 @@ import {
   Switch,
   TouchableOpacity,
   Alert,
+  Share,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -63,6 +64,53 @@ export default function SettingsScreen() {
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [envName, setEnvNameState] = useState<EnvName>(getEnvName());
+
+  // ── RGPD / CNDP : export + suppression compte (endpoints backend réels) ──
+  const exportMyData = async () => {
+    try {
+      const data = await api.get<any>('/users/me/export-data');
+      await Share.share({
+        title: 'Mes données SallyCards',
+        message: JSON.stringify(data, null, 2).slice(0, 100000),
+      });
+    } catch (e: any) {
+      Alert.alert('Erreur', e?.message ?? "Export impossible");
+    }
+  };
+
+  const deleteMyAccount = () => {
+    Alert.alert(
+      'Supprimer mon compte',
+      'Action irréversible (effective sous 30 jours, conformément à la loi 09-08 / RGPD). Toutes tes données seront supprimées. Confirmer ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer définitivement',
+          style: 'destructive',
+          onPress: () => {
+            // Double confirmation pour une action destructive
+            Alert.alert('Dernière confirmation', 'Es-tu vraiment sûr ? Cette action ne peut pas être annulée.', [
+              { text: 'Annuler', style: 'cancel' },
+              {
+                text: 'Oui, supprimer',
+                style: 'destructive',
+                onPress: async () => {
+                  try {
+                    await api.post('/users/me/delete-account', { reason: 'user_request' });
+                    await api.logout();
+                    Alert.alert('Compte supprimé', 'Ta demande est enregistrée (effective sous 30 jours).');
+                    router.replace('/');
+                  } catch (e: any) {
+                    Alert.alert('Erreur', e?.message ?? 'Suppression impossible');
+                  }
+                },
+              },
+            ]);
+          },
+        },
+      ],
+    );
+  };
 
   const openEnvPicker = () => {
     Alert.alert(
@@ -220,8 +268,8 @@ export default function SettingsScreen() {
         <LinearGradient colors={palette.cardGradient} style={[s.section, { borderColor: palette.border }]}>
           <SettingRow
             icon="download"
-            label={t('exportData') ?? 'Export My Data'}
-            onPress={() => Alert.alert(t('exportData') ?? 'Export', 'Your data will be prepared.')}
+            label={t('exportData') ?? 'Exporter mes données'}
+            onPress={exportMyData}
             palette={palette}
           />
           <SettingRow
@@ -244,11 +292,8 @@ export default function SettingsScreen() {
         <LinearGradient colors={palette.cardGradient} style={[s.section, { borderColor: palette.border }]}>
           <SettingRow
             icon="trash"
-            label={t('deleteAccount') ?? 'Delete Account'}
-            onPress={() => Alert.alert(t('deleteAccount') ?? 'Delete', 'Permanent action.', [
-              { text: t('cancel') ?? 'Cancel', style: 'cancel' },
-              { text: t('delete') ?? 'Delete', style: 'destructive' },
-            ])}
+            label={t('deleteAccount') ?? 'Supprimer mon compte'}
+            onPress={deleteMyAccount}
             palette={palette}
             danger
           />
