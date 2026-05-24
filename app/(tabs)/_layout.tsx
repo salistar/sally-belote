@@ -8,72 +8,57 @@
 
 import React, { useEffect } from 'react';
 import { Tabs } from 'expo-router';
-import { Platform, Text } from 'react-native';
+import { Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 
-/**
- * TabIcon - Renders an emoji icon for each tab bar item.
- */
-function TabIcon({ name }: { name: string }) {
-  return <Text style={{ fontSize: 20 }}>{name}</Text>;
+/** Icône de tab : Ionicons, variante "pleine" quand l'onglet est actif. */
+function tabIcon(base: keyof typeof Ionicons.glyphMap, outline: keyof typeof Ionicons.glyphMap) {
+  return ({ focused, color, size }: { focused: boolean; color: string; size: number }) => (
+    <Ionicons name={focused ? base : outline} size={size ?? 22} color={color} />
+  );
 }
 
 export default function TabsLayout() {
   const { t } = useTranslation();
 
-  // useEffect: Logs when the tabs layout is mounted
   useEffect(() => {
     console.log('[Belote/TabsLayout] Component mounted');
   }, []);
 
   return (
-    /* Bottom tab navigator with dark-styled tab bar */
+    /* Bottom tab navigator — thème Belote (bleu nuit + accent or) */
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#111827',
-          borderTopColor: 'rgba(255,255,255,0.1)',
-          height: Platform.OS === 'ios' ? 88 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+          backgroundColor: '#0A1F44',
+          borderTopColor: 'rgba(252,211,77,0.18)',
+          borderTopWidth: 1,
+          height: Platform.OS === 'ios' ? 88 : 66,
+          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
           paddingTop: 8,
         },
-        tabBarActiveTintColor: '#16A34A',
-        tabBarInactiveTintColor: '#6B7280',
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarActiveTintColor: '#FCD34D',
+        tabBarInactiveTintColor: '#64748B',
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
       }}
     >
-      {/* Play tab - main game entry point */}
       <Tabs.Screen
         name="index"
-        options={{
-          title: t('play'),
-          tabBarIcon: () => <TabIcon name="🎮" />,
-        }}
+        options={{ title: t('play'), tabBarIcon: tabIcon('game-controller', 'game-controller-outline') }}
       />
-      {/* Leaderboard tab - player rankings */}
       <Tabs.Screen
         name="leaderboard"
-        options={{
-          title: t('leaderboard'),
-          tabBarIcon: () => <TabIcon name="🏆" />,
-        }}
+        options={{ title: t('leaderboard'), tabBarIcon: tabIcon('trophy', 'trophy-outline') }}
       />
-            {/* Maps tab - hkim / position du joueur */}
       <Tabs.Screen
         name="maps"
-        options={{
-          title: t('map') ?? 'Carte',
-          tabBarIcon: () => <TabIcon name="🗺️" />,
-        }}
+        options={{ title: t('map') ?? 'Carte', tabBarIcon: tabIcon('map', 'map-outline') }}
       />
-      {/* Profile tab - user stats and account info */}
       <Tabs.Screen
         name="profile"
-        options={{
-          title: t('profile'),
-          tabBarIcon: () => <TabIcon name="👤" />,
-        }}
+        options={{ title: t('profile'), tabBarIcon: tabIcon('person', 'person-outline') }}
       />
     </Tabs>
   );

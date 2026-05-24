@@ -24,6 +24,7 @@ import React, {
 import { useColorScheme } from 'react-native';
 import i18n from '../../i18n/i18n.config';
 import { logger } from '../utils/logger';
+import { hydrateEnvName } from '../../shared/env';
 
 // Load AsyncStorage lazily and defensively. If the module is missing, its
 // native bridge isn't linked, or .default isn't a valid storage object, we
@@ -166,6 +167,7 @@ export const useLocale = (): LocaleCtx => {
 
 const K_THEME = '@belote/theme-mode';
 const K_LOCALE = '@belote/locale';
+export const K_ENV = '@belote/env';
 
 // ──────────────────────────────────────────────────────────────
 // Provider
@@ -196,11 +198,16 @@ export function AppProviders({ children }: Props) {
     (async () => {
       try {
         logger.screen('AppProviders', 'hydrating persisted preferences');
-        const [savedTheme, savedLocale] = await Promise.all([
+        const [savedTheme, savedLocale, savedEnv] = await Promise.all([
           AsyncStorage.getItem(K_THEME),
           AsyncStorage.getItem(K_LOCALE),
+          AsyncStorage.getItem(K_ENV),
         ]);
         if (cancelled) return;
+        if (savedEnv === 'local' || savedEnv === 'prod') {
+          hydrateEnvName(savedEnv);
+          logger.explain(`environnement restauré → ${savedEnv}`);
+        }
         if (savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'system') {
           setModeState(savedTheme as ThemeMode);
           logger.explain(`thème restauré → ${savedTheme}`);

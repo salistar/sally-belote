@@ -4,7 +4,7 @@
  * @project SallyCards - Belote
  */
 
-import React, { useReducer, useCallback, useEffect, useRef, useState } from 'react';
+import React, { useReducer, useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -25,6 +25,7 @@ import {
   GameState,
   GameAction,
   Suit,
+  Card,
   gameReducer,
   createInitialState,
   getCurrentPlayer,
@@ -38,7 +39,31 @@ import {
   SUIT_NAMES,
   SUITS,
 } from '../../src/game/beloteEngine';
+import {
+  AdvancedGameState,
+  Annonce,
+  BOT_PRESETS,
+  BotDifficulty,
+  botBidAdvanced,
+  botPlayAdvanced,
+  detectAnnonces,
+  hasBelote,
+  resolveAnnonces,
+  cardPoints,
+} from '../../src/game/beloteEngine.advanced';
 import { getCardImage, getCardBackImage } from '../../src/game/cardAssets';
+
+function annonceLabel(a: Annonce): string {
+  switch (a.type) {
+    case 'tierce': return 'Tierce';
+    case 'cinquante': return 'Cinquante';
+    case 'cent': return 'Cent';
+    case 'carre-valets': return 'Carré de Valets';
+    case 'carre-neufs': return 'Carré de Neufs';
+    case 'carre-autres': return 'Carré';
+    case 'belote': return 'Belote';
+  }
+}
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = 58;
@@ -58,10 +83,46 @@ const SUIT_SYMBOLS: Record<Suit, string> = {
 export default function BeloteLocalScreen() {
   const router = useRouter();
   const { t } = useTranslation();
+  const params = useLocalSearchParams<{ difficulty?: string }>();
+  // Mapping URL param → preset bot. 'expert' (passé par la home) → 'hard'.
+  const difficulty: BotDifficulty = useMemo(() => {
+    const d = (params.difficulty || '').toLowerCase();
+    if (d === 'easy') return 'easy';
+    if (d === 'medium') return 'medium';
+    if (d === 'expert' || d === 'hard') return 'hard';
+    return 'medium';
+  }, [params.difficulty]);
+  const botConfig = BOT_PRESETS[difficulty];
+
   const [state, dispatch] = useReducer(gameReducer, createInitialState());
   const [message, setMessage] = useState<string>('');
   const [showStuck, setShowStuck] = useState(false);
   const botTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ===== État du moteur avancé (overlay, n'altère pas le reducer) =====
+  /** Toutes les cartes déjà jouées dans la manche en cours (pour card-counting). */
+  const [playedCards, setPlayedCards] = useState<Card[]>([]);
+  /** Annonces détectées au début de la manche (toutes mains). */
+  const [annonces, setAnnonces] = useState<Annonce[]>([]);
+  /** Joueur qui a déclaré Belote (R+D atout). */
+  const [beloteBy, setBeloteBy] = useState<string | null>(null);
+  /** Bannière "Belote!" / "Rebelote!" temporaire. */
+  const [beloteFlash, setBeloteFlash] = useState<'belote' | 'rebelote' | null>(null);
+  /** Modal affichant les annonces gagnantes en début de manche. */
+  const [showAnnoncesModal, setShowAnnoncesModal] = useState(false);
+
+  // AdvancedGameState dérivé — utilisé par le bot pour card-counting + heuristique
+  const advState: AdvancedGameState = useMemo(
+    () => ({
+      ...state,
+      playedCards,
+      annonces,
+      beloteBy,
+      contract: null,
+      contre: 0 as const,
+    }),
+    [state, playedCards, annonces, beloteBy],
+  );
 
   // Détection blocage : tous les joueurs ont passé aux 2 tours d'enchères
   useEffect(() => {
@@ -82,14 +143,14 @@ export default function BeloteLocalScreen() {
     };
   }, []);
 
-  // Bot bidding
+  // Bot bidding — moteur avancé (botBidAdvanced avec niveau + humanisation)
   useEffect(() => {
     if (state.phase !== 'bidding') return;
     const current = getCurrentPlayer(state);
     if (!current || !current.isBot) return;
 
     botTimerRef.current = setTimeout(() => {
-      const suit = botBid(current, state.bids);
+      const suit = botBidAdvanced(current, state.bids, botConfig);
       dispatch({ type: 'BID', playerId: current.id, suit });
       if (suit) {
         setMessage(`${current.name} propose ${SUIT_NAMES[suit]}!`);
@@ -99,9 +160,9 @@ export default function BeloteLocalScreen() {
     }, 800 + Math.random() * 600);
 
     return () => { if (botTimerRef.current) clearTimeout(botTimerRef.current); };
-  }, [state.phase, state.currentPlayerIndex, state.bids.length]);
+  }, [state.phase, state.currentPlayerIndex, state.bids.length, botConfig]);
 
-  // Bot play logic
+  // Bot play logic — moteur avancé (botPlayAdvanced avec card-counting)
   useEffect(() => {
     if (state.phase !== 'playing') return;
     const current = getCurrentPlayer(state);
@@ -109,15 +170,102 @@ export default function BeloteLocalScreen() {
 
     botTimerRef.current = setTimeout(() => {
       try {
-        const move = botPlay(state);
+        const move = botPlayAdvanced(advState, botConfig);
         dispatch({ type: 'PLAY_CARD', playerId: current.id, cardId: move.cardId });
       } catch {
-        // Bot error
+        // fallback : si l'avancé plante (état partiel), retombe sur le bot simple
+        try {
+          const move = botPlay(state);
+          dispatch({ type: 'PLAY_CARD', playerId: current.id, cardId: move.cardId });
+        } catch { /* no-op */ }
       }
     }, 800 + Math.random() * 700);
 
     return () => { if (botTimerRef.current) clearTimeout(botTimerRef.current); };
-  }, [state.phase, state.currentPlayerIndex, state.currentTrick.length]);
+  }, [state.phase, state.currentPlayerIndex, state.currentTrick.length, advState, botConfig]);
+
+  // ===== Détection annonces au début de la manche (phase: bidding→playing) =====
+  // Quand le trumpSuit est fixé, on calcule les annonces de chaque main et
+  // on les présente au joueur. C'est purement informatif (pas de scoring auto).
+  useEffect(() => {
+    if (state.phase !== 'playing') return;
+    if (!state.trumpSuit) return;
+    if (annonces.length > 0) return; // déjà calculé pour cette manche
+    const allAnnonces: Annonce[] = [];
+    for (const p of state.players) {
+      allAnnonces.push(...detectAnnonces(p, state.trumpSuit));
+    }
+    if (allAnnonces.length === 0) return;
+    setAnnonces(allAnnonces);
+    // N'affiche la modale que s'il y a au moins une annonce ≥ tierce
+    setShowAnnoncesModal(true);
+  }, [state.phase, state.trumpSuit, state.players, annonces.length]);
+
+  // ===== Tracking playedCards (toutes les cartes posées dans la manche) =====
+  useEffect(() => {
+    // Quand un pli se termine, on rajoute ses cartes au pool "joué"
+    if (state.tricks.length === 0) return;
+    const last = state.tricks[state.tricks.length - 1];
+    setPlayedCards((prev) => {
+      const existing = new Set(prev.map((c) => c.id));
+      const merged = [...prev];
+      for (const e of last.cards) if (!existing.has(e.card.id)) merged.push(e.card);
+      return merged;
+    });
+  }, [state.tricks.length]);
+
+  // ===== Détection Belote/Rebelote (R+D atout joués par le même joueur) =====
+  // Quand une carte est posée dans le pli courant, si c'est R ou D d'atout
+  // et que ce joueur a Belote (R+D), on déclenche le flash + on mémorise.
+  useEffect(() => {
+    if (state.currentTrick.length === 0) return;
+    if (!state.trumpSuit) return;
+    const last = state.currentTrick[state.currentTrick.length - 1];
+    const isTrumpKingOrQueen = last.card.suit === state.trumpSuit
+      && (last.card.value === 12 || last.card.value === 11);
+    if (!isTrumpKingOrQueen) return;
+    const player = state.players.find((p) => p.id === last.playerId);
+    if (!player) return;
+    // Avant ce coup, le joueur avait-il R+D atout dans sa main ? On recompose.
+    const cardsStillInHand = player.hand;
+    const cardsHePlayedSoFar = [
+      ...state.tricks.flatMap((t) => t.cards.filter((c) => c.playerId === player.id).map((c) => c.card)),
+      ...state.currentTrick.filter((c) => c.playerId === player.id).map((c) => c.card),
+    ];
+    const trumpKQ = [...cardsStillInHand, ...cardsHePlayedSoFar]
+      .filter((c) => c.suit === state.trumpSuit && (c.value === 11 || c.value === 12));
+    const uniqueValues = new Set(trumpKQ.map((c) => c.value));
+    if (uniqueValues.size === 2) {
+      // Ce joueur détient Belote
+      if (beloteBy !== player.id) {
+        setBeloteBy(player.id);
+        setBeloteFlash('belote');
+        setMessage(`${player.name === 'Vous' ? 'Vous' : player.name} : Belote!`);
+      } else {
+        setBeloteFlash('rebelote');
+        setMessage(`${player.name === 'Vous' ? 'Vous' : player.name} : Rebelote!`);
+      }
+    }
+  }, [state.currentTrick.length, state.trumpSuit]);
+
+  // Reset état avancé à chaque nouvelle manche
+  useEffect(() => {
+    if (state.phase === 'bidding' && state.roundNumber > 0 && state.tricks.length === 0) {
+      // On vient de relancer une manche → reset overlay
+      setPlayedCards([]);
+      setAnnonces([]);
+      setBeloteBy(null);
+      setBeloteFlash(null);
+      setShowAnnoncesModal(false);
+    }
+  }, [state.phase, state.roundNumber]);
+
+  // Auto-clear flash
+  useEffect(() => {
+    if (!beloteFlash) return;
+    const t = setTimeout(() => setBeloteFlash(null), 1800);
+    return () => clearTimeout(t);
+  }, [beloteFlash]);
 
   // Auto-advance after trick
   useEffect(() => {
@@ -204,8 +352,18 @@ export default function BeloteLocalScreen() {
               <Text style={styles.trumpText}>Atout: {SUIT_NAMES[state.trumpSuit]}</Text>
             )}
           </View>
-          <View style={styles.scoreContainer}>
-            <Text style={styles.scoreLabel}>Manche {state.roundNumber}</Text>
+          <View style={{ alignItems: 'flex-end', gap: 4 }}>
+            <View style={styles.scoreContainer}>
+              <Text style={styles.scoreLabel}>Manche {state.roundNumber}</Text>
+            </View>
+            <View style={[styles.diffBadge, {
+              backgroundColor: difficulty === 'hard' ? '#DC2626'
+                : difficulty === 'medium' ? '#F59E0B' : '#10B981',
+            }]}>
+              <Text style={styles.diffBadgeText}>
+                {difficulty === 'hard' ? t('diffHard') : difficulty === 'medium' ? t('diffMedium') : t('diffEasy')}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -357,6 +515,54 @@ export default function BeloteLocalScreen() {
             })}
           </ScrollView>
         </View>
+
+        {/* Flash Belote/Rebelote (overlay temporaire) */}
+        {beloteFlash && (
+          <View pointerEvents="none" style={styles.beloteFlash}>
+            <LinearGradient colors={['#F59E0B', '#DC2626']} style={styles.beloteFlashInner}>
+              <Ionicons name="heart" size={22} color="#fff" />
+              <Text style={styles.beloteFlashText}>
+                {beloteFlash === 'belote' ? t('belote') : t('rebelote')}
+              </Text>
+            </LinearGradient>
+          </View>
+        )}
+
+        {/* Modal annonces au début de la manche */}
+        <Modal visible={showAnnoncesModal} transparent animationType="fade" onRequestClose={() => setShowAnnoncesModal(false)}>
+          <View style={styles.modalBg}>
+            <LinearGradient colors={['#1F2937', '#111827']} style={styles.modalCard}>
+              <Ionicons name="trophy" size={42} color="#F59E0B" />
+              <Text style={styles.modalTitle}>{t('annoncesTitle')}</Text>
+              <Text style={styles.modalSub}>
+                {(() => {
+                  if (!state.trumpSuit) return '';
+                  const r = resolveAnnonces(annonces, state.players, state.players[0].id);
+                  if (r.winningTeam < 0) return t('annoncesNone');
+                  return t('annoncesTeamGain', { team: getTeamName(r.winningTeam), points: r.totalPoints });
+                })()}
+              </Text>
+              <ScrollView style={{ maxHeight: 200, alignSelf: 'stretch', marginTop: 12 }}>
+                {annonces.map((a, i) => {
+                  const p = state.players.find((pp) => pp.id === a.playerId);
+                  return (
+                    <View key={i} style={styles.annonceRow}>
+                      <Text style={styles.annonceLabel}>{annonceLabel(a)}</Text>
+                      <Text style={styles.annoncePlayer}>{p?.name ?? '?'}</Text>
+                      <Text style={styles.annoncePts}>+{a.points}</Text>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+              <TouchableOpacity
+                onPress={() => setShowAnnoncesModal(false)}
+                style={[styles.actionButton, { marginTop: 14 }]}
+              >
+                <Text style={styles.actionButtonText}>OK</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
+        </Modal>
 
         {/* Modal blocage Belote : tous ont passé aux 2 tours */}
         <Modal visible={showStuck} transparent animationType="fade">
@@ -573,4 +779,55 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   trumpBadgeText: { color: '#fff', fontSize: 9, fontWeight: '900' },
+
+  // === Badge difficulté (header) ===
+  diffBadge: {
+    paddingHorizontal: 8, paddingVertical: 2,
+    borderRadius: 6,
+  },
+  diffBadgeText: { color: '#fff', fontSize: 9, fontWeight: '900', letterSpacing: 1 },
+
+  // === Flash Belote/Rebelote (overlay) ===
+  beloteFlash: {
+    position: 'absolute',
+    top: '40%',
+    left: 0, right: 0,
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  beloteFlashInner: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 26, paddingVertical: 14,
+    borderRadius: 999,
+    shadowColor: '#F59E0B',
+    shadowOpacity: 0.8, shadowRadius: 20, shadowOffset: { width: 0, height: 0 },
+    elevation: 12,
+  },
+  beloteFlashText: { color: '#fff', fontSize: 22, fontWeight: '900', letterSpacing: 1 },
+
+  // === Modal annonces ===
+  modalBg: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  modalCard: {
+    width: '100%', maxWidth: 380,
+    padding: 24, borderRadius: 20,
+    alignItems: 'center',
+    borderWidth: 2, borderColor: '#F59E0B',
+  },
+  modalTitle: { color: '#fff', fontSize: 22, fontWeight: '900', marginTop: 6 },
+  modalSub: { color: '#F59E0B', fontSize: 14, fontWeight: '700', marginTop: 4 },
+  annonceRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 8, paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    marginBottom: 6,
+  },
+  annonceLabel: { color: '#fff', fontSize: 13, fontWeight: '700', flex: 1 },
+  annoncePlayer: { color: 'rgba(255,255,255,0.65)', fontSize: 12, marginRight: 10 },
+  annoncePts: { color: '#10B981', fontSize: 14, fontWeight: '900' },
 });

@@ -14,6 +14,7 @@ import {
   Switch,
   TouchableOpacity,
   Alert,
+  Share,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,6 +24,7 @@ import AppHeader from '../src/components/AppHeader';
 import { useTheme, useLocale, LOCALES, LocaleCode, ThemeMode } from '../src/contexts/AppProviders';
 import { logger } from '../src/utils/logger';
 import * as api from '../shared/api';
+import { getEnvName, setEnvName, getEnv, EnvName } from '../shared/env';
 
 const log = logger.scoped('SettingsScreen');
 
@@ -61,6 +63,66 @@ export default function SettingsScreen() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [envName, setEnvNameState] = useState<EnvName>(getEnvName());
+
+  // ── RGPD / CNDP : export + suppression compte (endpoints backend réels) ──
+  const exportMyData = async () => {
+    try {
+      const data = await api.get<any>('/users/me/export-data');
+      await Share.share({
+        title: 'Mes données SallyCards',
+        message: JSON.stringify(data, null, 2).slice(0, 100000),
+      });
+    } catch (e: any) {
+      Alert.alert('Erreur', e?.message ?? "Export impossible");
+    }
+  };
+
+  const deleteMyAccount = () => {
+    Alert.alert(
+      'Supprimer mon compte',
+      'Action irréversible (effective sous 30 jours, conformément à la loi 09-08 / RGPD). Toutes tes données seront supprimées. Confirmer ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer définitivement',
+          style: 'destructive',
+          onPress: () => {
+            // Double confirmation pour une action destructive
+            Alert.alert('Dernière confirmation', 'Es-tu vraiment sûr ? Cette action ne peut pas être annulée.', [
+              { text: 'Annuler', style: 'cancel' },
+              {
+                text: 'Oui, supprimer',
+                style: 'destructive',
+                onPress: async () => {
+                  try {
+                    await api.post('/users/me/delete-account', { reason: 'user_request' });
+                    await api.logout();
+                    Alert.alert('Compte supprimé', 'Ta demande est enregistrée (effective sous 30 jours).');
+                    router.replace('/');
+                  } catch (e: any) {
+                    Alert.alert('Erreur', e?.message ?? 'Suppression impossible');
+                  }
+                },
+              },
+            ]);
+          },
+        },
+      ],
+    );
+  };
+
+  const openEnvPicker = () => {
+    Alert.alert(
+      'Environnement',
+      'Choisis le backend utilisé par l\'app. Recharge l\'app après changement pour que les connexions temps réel (socket) se reconnectent.',
+      [
+        { text: 'Local · 127.0.0.1', onPress: () => { setEnvName('local'); setEnvNameState('local'); } },
+        { text: 'Production · salistar.com', onPress: () => { setEnvName('prod'); setEnvNameState('prod'); } },
+        { text: 'Annuler', style: 'cancel' },
+      ],
+    );
+  };
 
   const current = LOCALES.find((l) => l.code === locale) ?? LOCALES[0];
 
@@ -156,13 +218,58 @@ export default function SettingsScreen() {
         </LinearGradient>
 
         <Text style={[s.sectionTitle, { color: palette.textSecondary }]}>
+          Développeur
+        </Text>
+        <LinearGradient colors={palette.cardGradient} style={[s.section, { borderColor: palette.border }]}>
+          <SettingRow
+            icon="server"
+            label="Environnement"
+            value={<Text style={{ color: envName === 'prod' ? palette.success : palette.gold, fontFamily: 'Inter-Bold' }}>
+              {envName === 'prod' ? 'Production' : 'Local'}
+            </Text>}
+            onPress={openEnvPicker}
+            palette={palette}
+          />
+        </LinearGradient>
+
+        <Text style={[s.sectionTitle, { color: palette.textSecondary }]}>
+          Boutique & Support
+        </Text>
+        <LinearGradient colors={palette.cardGradient} style={[s.section, { borderColor: palette.border }]}>
+          <SettingRow
+            icon="receipt"
+            label="Historique des achats"
+            onPress={() => router.push('/shop/purchase-history')}
+            palette={palette}
+          />
+          <SettingRow
+            icon="cloud-outline"
+            label="Météo (challenges sport)"
+            onPress={() => router.push('/weather')}
+            palette={palette}
+          />
+          <SettingRow
+            icon="help-circle"
+            label="Aide & FAQ"
+            onPress={() => router.push('/support/help')}
+            palette={palette}
+          />
+          <SettingRow
+            icon="mail"
+            label="Contacter le support"
+            onPress={() => router.push('/support/contact')}
+            palette={palette}
+          />
+        </LinearGradient>
+
+        <Text style={[s.sectionTitle, { color: palette.textSecondary }]}>
           {t('account') ?? 'Account'}
         </Text>
         <LinearGradient colors={palette.cardGradient} style={[s.section, { borderColor: palette.border }]}>
           <SettingRow
             icon="download"
-            label={t('exportData') ?? 'Export My Data'}
-            onPress={() => Alert.alert(t('exportData') ?? 'Export', 'Your data will be prepared.')}
+            label={t('exportData') ?? 'Exporter mes données'}
+            onPress={exportMyData}
             palette={palette}
           />
           <SettingRow
@@ -185,11 +292,8 @@ export default function SettingsScreen() {
         <LinearGradient colors={palette.cardGradient} style={[s.section, { borderColor: palette.border }]}>
           <SettingRow
             icon="trash"
-            label={t('deleteAccount') ?? 'Delete Account'}
-            onPress={() => Alert.alert(t('deleteAccount') ?? 'Delete', 'Permanent action.', [
-              { text: t('cancel') ?? 'Cancel', style: 'cancel' },
-              { text: t('delete') ?? 'Delete', style: 'destructive' },
-            ])}
+            label={t('deleteAccount') ?? 'Supprimer mon compte'}
+            onPress={deleteMyAccount}
             palette={palette}
             danger
           />
