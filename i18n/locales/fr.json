@@ -186,7 +186,9 @@
   "home": {
     "playCta": "Jouer une partie",
     "playCtaSub": "Toutes les variantes",
-    "soloBadge": "JOUER"
+    "soloBadge": "JOUER",
+    "shortClassicSub": "4×4 / 4×6 / 6×6",
+    "shortTriplets": "Triplets"
   },
   "variants": {
     "title": "Choix de la variante",
@@ -224,5 +226,11 @@
     "body": "Personne n'a pris l'enchère après les 2 tours. Le donneur change, redistribution forcée.",
     "again": "Redistribuer",
     "continue": "Continuer"
-  }
+  },
+  "drawsShort": "N",
+  "slide3": {
+    "title": "Bots IA"
+  },
+  "wallet": "Portefeuille",
+  "yourMove": "À ton tour"
 }
