@@ -8,7 +8,12 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "cover",
-      "backgroundColor": "#0A1535"
+      "backgroundColor": "#0A1535",
+      "dark": {
+        "image": "./assets/splash.png",
+        "resizeMode": "cover",
+        "backgroundColor": "#0A1535"
+      }
     },
     "scheme": "sallycards",
     "ios": {
@@ -39,12 +44,21 @@
           "apiKey": "AIzaSyAa1lBSroSXA-Om4mio84-SWAcmzQgYv8w"
         }
       },
-      "versionCode": 5
+      "versionCode": 7
     },
     "plugins": [
       "expo-router",
       "expo-localization",
       "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "cover",
+          "backgroundColor": "#0A1535",
+          "imageWidth": 1242
+        }
+      ],
       [
         "expo-location",
         {
