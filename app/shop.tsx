@@ -139,13 +139,28 @@ export default function ShopScreen() {
           colors={['rgba(10,10,26,0.2)', 'rgba(10,10,26,0.95)']}
           style={StyleSheet.absoluteFill}
         />
-        <View style={styles.walletBadge}>
-          <Ionicons name="wallet" size={20} color="#fff" />
-          <Text style={styles.walletValue}>{user?.coins ?? 0}</Text>
-          <Text style={styles.walletLabel}>coins</Text>
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+          <View style={styles.walletBadge}>
+            <Text style={{ fontSize: 18 }}>🪙</Text>
+            <Text style={styles.walletValue}>{user?.coins ?? 0}</Text>
+            <Text style={styles.walletLabel}>coins</Text>
+          </View>
+          <View style={[styles.walletBadge, { backgroundColor: 'rgba(236,72,153,0.20)', borderColor: '#EC4899' }]}>
+            <Text style={{ fontSize: 18 }}>💎</Text>
+            <Text style={[styles.walletValue, { color: '#fff' }]}>{(user as any)?.gems ?? 0}</Text>
+            <Text style={styles.walletLabel}>gems</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => router.push('/shop/guide')}
+            style={[styles.walletBadge, { backgroundColor: 'rgba(255,255,255,0.10)' }]}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="help-circle-outline" size={20} color="#fff" />
+            <Text style={styles.walletLabel}>Guide</Text>
+          </TouchableOpacity>
         </View>
-        <Text style={styles.heroTitle}>Sally Coins</Text>
-        <Text style={styles.heroSubtitle}>Achète des packs pour débloquer plus de fun</Text>
+        <Text style={styles.heroTitle}>Sally Coins & Gemmes</Text>
+        <Text style={styles.heroSubtitle}>Coins = jeu · Gemmes = premium · tap « Guide » pour tout savoir</Text>
       </ImageBackground>
 
       {loading ? (

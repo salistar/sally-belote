@@ -213,7 +213,9 @@ export default function HomeScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* Raccourcis : sport challenges, amis, récompenses, notifications */}
+        {/* Raccourcis : seulement ce qui sert directement au jeu (no duplicates avec
+            header/bottom-tabs). Supprimes : Friends (header), Notifications (header),
+            Classements (bottom-tab). */}
         <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>{t('sectionMore')}</Text>
         <View style={styles.shortcutsGrid}>
           <TouchableOpacity style={styles.shortcutCard} onPress={() => router.push('/challenge/create')} activeOpacity={0.85}>
@@ -222,22 +224,10 @@ export default function HomeScreen() {
               <Text style={styles.shortcutLabel}>{t('shortcutSportChallenge')}</Text>
             </LinearGradient>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.shortcutCard} onPress={() => router.push('/friends')} activeOpacity={0.85}>
-            <LinearGradient colors={['#3B82F6', '#1D4ED8']} style={styles.shortcutGrad}>
-              <Ionicons name="people-outline" size={22} color="#fff" />
-              <Text style={styles.shortcutLabel}>{t('shortcutFriends')}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
           <TouchableOpacity style={styles.shortcutCard} onPress={() => router.push('/rewards')} activeOpacity={0.85}>
             <LinearGradient colors={['#F59E0B', '#D97706']} style={styles.shortcutGrad}>
               <Ionicons name="gift-outline" size={22} color="#fff" />
               <Text style={styles.shortcutLabel}>{t('shortcutRewards')}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.shortcutCard} onPress={() => router.push('/notifications/inbox')} activeOpacity={0.85}>
-            <LinearGradient colors={['#A855F7', '#7C3AED']} style={styles.shortcutGrad}>
-              <Ionicons name="notifications-outline" size={22} color="#fff" />
-              <Text style={styles.shortcutLabel}>{t('shortcutInbox')}</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity style={styles.shortcutCard} onPress={() => router.push('/tournament/list')} activeOpacity={0.85}>
@@ -246,18 +236,13 @@ export default function HomeScreen() {
               <Text style={styles.shortcutLabel}>Tournois</Text>
             </LinearGradient>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.shortcutCard} onPress={() => router.push('/leaderboard-period')} activeOpacity={0.85}>
-            <LinearGradient colors={['#0EA5E9', '#0284C7']} style={styles.shortcutGrad}>
-              <Ionicons name="podium-outline" size={22} color="#fff" />
-              <Text style={styles.shortcutLabel}>Classements</Text>
+          <TouchableOpacity style={styles.shortcutCard} onPress={() => router.push('/shop?tab=gems')} activeOpacity={0.85}>
+            <LinearGradient colors={['#EC4899', '#BE185D']} style={styles.shortcutGrad}>
+              <Ionicons name="diamond-outline" size={22} color="#fff" />
+              <Text style={styles.shortcutLabel}>Gemmes</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.historyRow} onPress={() => router.push('/challenge/history')} activeOpacity={0.7}>
-          <Ionicons name="time-outline" size={16} color={palette.textSecondary} />
-          <Text style={[styles.historyText, { color: palette.textSecondary }]}>{t('shortcutHistorySport')}</Text>
-          <Ionicons name="chevron-forward" size={14} color={palette.textSecondary} />
-        </TouchableOpacity>
 
         {/* Daily challenge details */}
         {challenge && (
