@@ -7,8 +7,8 @@
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#2563EB"
+      "resizeMode": "cover",
+      "backgroundColor": "#0A1535"
     },
     "scheme": "sallycards",
     "ios": {
@@ -38,7 +38,8 @@
         "googleMaps": {
           "apiKey": "AIzaSyAa1lBSroSXA-Om4mio84-SWAcmzQgYv8w"
         }
-      }
+      },
+      "versionCode": 3
     },
     "plugins": [
       "expo-router",
