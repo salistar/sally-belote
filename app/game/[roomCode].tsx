@@ -236,7 +236,20 @@ export default function BeloteRoomScreen() {
         </View>
 
         {/* Table feutrée : adversaires autour, pli au centre */}
-        <View style={styles.table}>
+        <LinearGradient
+          colors={['#0F6B3F', '#0B4D2C', '#073521']}
+          start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+          style={styles.table}
+        >
+          {/* Decorative suit watermarks in table corners */}
+          <Text style={[styles.tableSuitWm, { top: 8,    left: 10,  color: 'rgba(255,255,255,0.06)' }]}>♠</Text>
+          <Text style={[styles.tableSuitWm, { top: 8,    right: 10, color: 'rgba(255,255,255,0.06)' }]}>♣</Text>
+          <Text style={[styles.tableSuitWm, { bottom: 8, left: 10,  color: 'rgba(239,68,68,0.10)' }]}>♥</Text>
+          <Text style={[styles.tableSuitWm, { bottom: 8, right: 10, color: 'rgba(239,68,68,0.10)' }]}>♦</Text>
+
+          {/* Centered round ring suggesting felt depth */}
+          <View style={styles.tableInnerRing} pointerEvents="none" />
+
           {!snap && (
             <View style={styles.tableEmpty}>
               <Text style={styles.tableEmptyText}>{connected ? 'Distribution…' : 'Connexion à la room…'}</Text>
@@ -250,7 +263,7 @@ export default function BeloteRoomScreen() {
 
               <View style={styles.trickCenter}>
                 {snap.currentTrick.length === 0 && snap.phase !== 'bidding' && (
-                  <Text style={styles.waitText}>En attente…</Text>
+                  <Text style={styles.waitText}>En attente du prochain pli…</Text>
                 )}
                 <View style={styles.trickRow}>
                   {snap.currentTrick.map((e) => (
@@ -258,8 +271,8 @@ export default function BeloteRoomScreen() {
                       key={e.card.id}
                       value={e.card.value}
                       suit={e.card.suit}
-                      width={50}
-                      height={75}
+                      width={56}
+                      height={84}
                       facing="up"
                       selected={e.playerId === snap.lastTrickWinner && snap.phase === 'trick_end'}
                     />
@@ -269,12 +282,22 @@ export default function BeloteRoomScreen() {
 
               {snap.phase === 'bidding' && (
                 <View style={styles.bidBanner}>
-                  <Text style={styles.bidBannerText}>Enchères — {current?.name}{isMyTurn ? ' · à vous' : '…'}</Text>
+                  <Text style={styles.bidBannerText}>
+                    🎯 Enchères — {current?.name}{isMyTurn ? '  ·  à vous' : '  ·  en attente…'}
+                  </Text>
+                </View>
+              )}
+
+              {snap.trumpSuit && snap.phase !== 'bidding' && (
+                <View style={styles.trumpChipFloating}>
+                  <Text style={styles.trumpChipText}>
+                    Atout  {SUIT_SYMBOL[snap.trumpSuit]} {SUIT_NAMES[snap.trumpSuit]}
+                  </Text>
                 </View>
               )}
             </>
           )}
-        </View>
+        </LinearGradient>
 
         {/* Ma main */}
         {snap && (
@@ -409,17 +432,35 @@ function createStyles(palette: ReturnType<typeof useTheme>['palette']) {
     trumpBox: { flex: 1, justifyContent: 'center', alignItems: 'flex-end' },
     trumpText: { fontSize: 12, fontFamily: 'Inter-SemiBold', textAlign: 'right' },
     table: {
-      position: 'relative', minHeight: 320, borderRadius: 24,
-      borderWidth: 5, borderColor: '#5b3a1a',
-      backgroundColor: '#0E5A36', padding: 14, overflow: 'hidden',
+      position: 'relative', minHeight: 340, borderRadius: 28,
+      borderWidth: 6, borderColor: '#3a230f',
+      padding: 14, overflow: 'hidden',
+      shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 14,
+      shadowOffset: { width: 0, height: 4 }, elevation: 10,
+    },
+    tableSuitWm: { position: 'absolute', fontSize: 120, fontFamily: 'Inter-Black' },
+    tableInnerRing: {
+      position: 'absolute', top: 28, left: 28, right: 28, bottom: 28,
+      borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
     },
     tableEmpty: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
-    tableEmptyText: { color: 'rgba(255,255,255,0.7)', fontFamily: 'Inter-Bold' },
+    tableEmptyText: { color: 'rgba(255,255,255,0.85)', fontFamily: 'Inter-Bold', fontSize: 13 },
     trickCenter: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
     trickRow: { flexDirection: 'row', gap: 6 },
-    waitText: { color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 6 },
+    waitText: { color: 'rgba(255,255,255,0.6)', fontSize: 13, marginBottom: 6, fontFamily: 'Inter-SemiBold' },
     bidBanner: { position: 'absolute', top: 10, left: 0, right: 0, alignItems: 'center' },
-    bidBannerText: { backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff', fontFamily: 'Inter-Bold', fontSize: 12, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, overflow: 'hidden' },
+    bidBannerText: {
+      backgroundColor: 'rgba(0,0,0,0.55)', color: '#fff', fontFamily: 'Inter-Bold',
+      fontSize: 12, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999,
+      overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(252,211,77,0.45)',
+    },
+    trumpChipFloating: {
+      position: 'absolute', top: 10, right: 12,
+      backgroundColor: 'rgba(252,211,77,0.95)',
+      paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999,
+      shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+    },
+    trumpChipText: { color: '#0A1535', fontFamily: 'Inter-Black', fontSize: 11, letterSpacing: 0.4 },
     handTitle: { fontSize: 14, fontFamily: 'Inter-Bold', marginBottom: 8 },
     handScroll: { paddingVertical: 12, paddingHorizontal: 4, gap: 8, minHeight: 110 },
     handSlot: { marginHorizontal: 4, borderRadius: 8 },
