@@ -136,7 +136,9 @@ export default function ProfileScreen() {
               </View>
             </LinearGradient>
           </View>
-          <Text style={styles.heroUsername}>{user.username}</Text>
+          <Text style={styles.heroUsername}>
+            {/^Guest_/i.test(user.username) ? (t('guestDisplayName') ?? 'Invité') : user.username}
+          </Text>
           {location.city && (
             <View style={styles.locationRow}>
               <Ionicons name="location" size={12} color="rgba(255,255,255,0.75)" />

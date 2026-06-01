@@ -136,7 +136,14 @@ export default function HomeScreen() {
             <Text style={styles.heroBadgeText}>{t('live')}</Text>
           </View>
           <View style={styles.heroBottom}>
-            <Text style={styles.heroTitle}>{user ? t('heroWelcomeUser', { name: user.username }) : t('heroWelcomeGuest')}</Text>
+            <Text style={styles.heroTitle}>
+              {user
+                ? t('heroWelcomeUser', {
+                    // Guest_xxxxxxxx -> just "Invité" (cleaner display)
+                    name: /^Guest_/i.test(user.username) ? t('guestDisplayName') : user.username,
+                  })
+                : t('heroWelcomeGuest')}
+            </Text>
             <Text style={styles.heroSubtitle}>
               {t('elo')} {user?.elo ?? 1000} · {(user as any)?.location?.city || t('defaultCity')}
             </Text>
