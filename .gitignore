@@ -50,3 +50,6 @@ junit.xml
 
 .gh-watch-state
 .gh-artifacts/
+# EAS keystore (do NOT commit)
+credentials/
+credentials.json
