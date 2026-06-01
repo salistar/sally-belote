@@ -380,42 +380,63 @@ export default function BeloteLocalScreen() {
           </View>
         </View>
 
-        {/* Opponents */}
-        <View style={styles.opponentsRow}>
-          {otherPlayers.map((p) => (
-            <View key={p.id} style={styles.opponentSlot}>
-              <Text style={[styles.opponentName, p.team === humanPlayer?.team && styles.partnerName]}>
-                {p.name} {p.team === humanPlayer?.team ? '(E)' : ''}
-              </Text>
-              <View style={styles.opponentCards}>
-                {p.hand.map((_, i) => (
-                  <Image key={i} source={getCardBackImage()} style={styles.tinyCard} />
-                ))}
-              </View>
-            </View>
-          ))}
-        </View>
+        {/* Felt-green table containing opponents + trick area */}
+        <LinearGradient
+          colors={['#0F6B3F', '#0B4D2C', '#073521']}
+          start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+          style={styles.feltTable}
+        >
+          {/* Decorative suit watermarks in the 4 table corners */}
+          <Text style={[styles.feltSuit, { top: 6,    left: 10,  color: 'rgba(255,255,255,0.06)' }]}>♠</Text>
+          <Text style={[styles.feltSuit, { top: 6,    right: 10, color: 'rgba(255,255,255,0.06)' }]}>♣</Text>
+          <Text style={[styles.feltSuit, { bottom: 6, left: 10,  color: 'rgba(239,68,68,0.10)' }]}>♥</Text>
+          <Text style={[styles.feltSuit, { bottom: 6, right: 10, color: 'rgba(239,68,68,0.10)' }]}>♦</Text>
+          <View style={styles.feltInnerRing} pointerEvents="none" />
 
-        {/* Current trick area */}
-        <View style={styles.trickArea}>
-          <Text style={styles.trickLabel}>
-            {state.phase === 'playing' ? `Pli ${state.tricks.length + 1}` : 'Pli'}
-          </Text>
-          <View style={styles.trickCards}>
-            {state.currentTrick.map((entry) => {
-              const p = state.players.find((pl) => pl.id === entry.playerId);
-              return (
-                <View key={entry.card.id} style={styles.trickCardWrapper}>
-                  <Image source={getCardImage(entry.card.id)} style={styles.trickCard} />
-                  <Text style={styles.trickPlayerName}>{p?.name || '?'}</Text>
+          {/* Trump chip (top right floating) */}
+          {state.trumpSuit && state.phase !== 'bidding' && (
+            <View style={styles.trumpChipFloat}>
+              <Text style={styles.trumpChipText}>Atout {state.trumpSuit}</Text>
+            </View>
+          )}
+
+          {/* Opponents */}
+          <View style={styles.opponentsRow}>
+            {otherPlayers.map((p) => (
+              <View key={p.id} style={styles.opponentSlot}>
+                <Text style={[styles.opponentName, p.team === humanPlayer?.team && styles.partnerName]}>
+                  {p.name} {p.team === humanPlayer?.team ? '(E)' : ''}
+                </Text>
+                <View style={styles.opponentCards}>
+                  {p.hand.map((_, i) => (
+                    <Image key={i} source={getCardBackImage()} style={styles.tinyCard} />
+                  ))}
                 </View>
-              );
-            })}
-            {state.currentTrick.length === 0 && state.phase === 'playing' && (
-              <Text style={styles.emptyTrick}>En attente...</Text>
-            )}
+              </View>
+            ))}
           </View>
-        </View>
+
+          {/* Current trick area */}
+          <View style={styles.trickArea}>
+            <Text style={styles.trickLabel}>
+              {state.phase === 'playing' ? `Pli ${state.tricks.length + 1}` : 'Pli'}
+            </Text>
+            <View style={styles.trickCards}>
+              {state.currentTrick.map((entry) => {
+                const p = state.players.find((pl) => pl.id === entry.playerId);
+                return (
+                  <View key={entry.card.id} style={styles.trickCardWrapper}>
+                    <Image source={getCardImage(entry.card.id)} style={styles.trickCard} />
+                    <Text style={styles.trickPlayerName}>{p?.name || '?'}</Text>
+                  </View>
+                );
+              })}
+              {state.currentTrick.length === 0 && state.phase === 'playing' && (
+                <Text style={styles.emptyTrick}>En attente...</Text>
+              )}
+            </View>
+          </View>
+        </LinearGradient>
 
         {/* Status / Bidding */}
         <View style={styles.statusBar}>
@@ -655,34 +676,55 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   tinyCard: { width: 22, height: 33, borderRadius: 3 },
+  feltTable: {
+    marginHorizontal: 12, marginVertical: 8,
+    borderRadius: 24, borderWidth: 4, borderColor: '#3a230f',
+    paddingHorizontal: 14, paddingVertical: 16,
+    overflow: 'hidden', position: 'relative',
+    shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 }, elevation: 8,
+  },
+  feltSuit: { position: 'absolute', fontSize: 90, fontWeight: '900' },
+  feltInnerRing: {
+    position: 'absolute', top: 18, left: 18, right: 18, bottom: 18,
+    borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+  },
+  trumpChipFloat: {
+    position: 'absolute', top: 12, right: 14, zIndex: 5,
+    backgroundColor: 'rgba(252,211,77,0.95)',
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999,
+    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+  },
+  trumpChipText: { color: '#0A1535', fontWeight: '900', fontSize: 11, letterSpacing: 0.4 },
   trickArea: {
-    flex: 1,
+    minHeight: 120,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 12,
   },
   trickLabel: {
-    color: 'rgba(255,255,255,0.3)',
-    fontSize: 11,
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 11, fontWeight: '700',
     textTransform: 'uppercase',
-    marginBottom: 8,
-    letterSpacing: 1,
+    marginBottom: 10, letterSpacing: 1.2,
   },
   trickCards: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
     alignItems: 'center',
     minHeight: CARD_HEIGHT + 20,
   },
   trickCardWrapper: { alignItems: 'center' },
   trickCard: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    width: CARD_WIDTH + 6,
+    height: CARD_HEIGHT + 8,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.30)',
+    shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 6, shadowOffset: { width: 0, height: 3 },
   },
-  trickPlayerName: { color: '#888', fontSize: 9, marginTop: 2 },
-  emptyTrick: { color: 'rgba(255,255,255,0.2)', fontSize: 13, fontStyle: 'italic' },
+  trickPlayerName: { color: 'rgba(255,255,255,0.7)', fontSize: 10, marginTop: 4, fontWeight: '600' },
+  emptyTrick: { color: 'rgba(255,255,255,0.4)', fontSize: 13, fontStyle: 'italic' },
   statusBar: {
     paddingHorizontal: 16,
     paddingVertical: 10,
