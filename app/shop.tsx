@@ -139,28 +139,29 @@ export default function ShopScreen() {
           colors={['rgba(10,10,26,0.2)', 'rgba(10,10,26,0.95)']}
           style={StyleSheet.absoluteFill}
         />
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+        {/* Wallet badges + Guide on a single row, Guide pushed RIGHT */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 }}>
           <View style={styles.walletBadge}>
-            <Text style={{ fontSize: 18 }}>🪙</Text>
+            <Text style={{ fontSize: 16 }}>🪙</Text>
             <Text style={styles.walletValue}>{user?.coins ?? 0}</Text>
-            <Text style={styles.walletLabel}>coins</Text>
           </View>
           <View style={[styles.walletBadge, { backgroundColor: 'rgba(236,72,153,0.20)', borderColor: '#EC4899' }]}>
-            <Text style={{ fontSize: 18 }}>💎</Text>
+            <Text style={{ fontSize: 16 }}>💎</Text>
             <Text style={[styles.walletValue, { color: '#fff' }]}>{(user as any)?.gems ?? 0}</Text>
-            <Text style={styles.walletLabel}>gems</Text>
           </View>
+          {/* Spacer pushes the Guide chip to the right edge */}
+          <View style={{ flex: 1 }} />
           <TouchableOpacity
             onPress={() => router.push('/shop/guide')}
-            style={[styles.walletBadge, { backgroundColor: 'rgba(255,255,255,0.10)' }]}
+            style={[styles.walletBadge, { backgroundColor: 'rgba(255,255,255,0.18)', borderColor: 'rgba(255,255,255,0.3)' }]}
             activeOpacity={0.85}
           >
-            <Ionicons name="help-circle-outline" size={20} color="#fff" />
-            <Text style={styles.walletLabel}>Guide</Text>
+            <Ionicons name="help-circle-outline" size={18} color="#fff" />
+            <Text style={[styles.walletLabel, { color: '#fff' }]}>Guide</Text>
           </TouchableOpacity>
         </View>
-        <Text style={styles.heroTitle}>Sally Coins & Gemmes</Text>
-        <Text style={styles.heroSubtitle}>Coins = jeu · Gemmes = premium · tap « Guide » pour tout savoir</Text>
+        <Text style={styles.heroTitle}>Boutique</Text>
+        <Text style={styles.heroSubtitle}>Achète coins & gemmes, débloque cosmétiques et VIP</Text>
       </ImageBackground>
 
       {loading ? (
@@ -243,6 +244,18 @@ export default function ShopScreen() {
           {packages.map((pkg) => {
             const total = (pkg.coins || 0) + (pkg.bonus || 0);
             const isBuying = purchasing === pkg.productId;
+            // Distinguish between coin packs and VIP subscriptions
+            const isVipPack = (pkg as any).kind === 'vip'
+              || /^Premium\b/i.test(pkg.name)
+              || /^(VIP|Sally Plus)\b/i.test(pkg.name)
+              || /vip|plus|premium/i.test(pkg.productId);
+            const isGemPack = (pkg as any).kind === 'gems'
+              || /(gem|gemme|diamond|diamant)/i.test(pkg.name)
+              || /(gem|gemme|diamond)/i.test(pkg.productId);
+            const unit = isVipPack ? (/yearly|annuel|1\s*an/i.test(pkg.name + pkg.productId) ? '1 an VIP' : 'VIP')
+                       : isGemPack ? 'gemmes'
+                       : 'coins';
+            const unitIcon = isVipPack ? '👑' : isGemPack ? '💎' : '🪙';
             return (
               <TouchableOpacity
                 key={pkg.productId}
@@ -266,11 +279,11 @@ export default function ShopScreen() {
                       <Text style={[styles.ribbonText, { color: '#78350F' }]}>MEILLEURE OFFRE</Text>
                     </View>
                   )}
-                  <Text style={styles.pkgIcon}>{pkg.icon || '💰'}</Text>
+                  <Text style={styles.pkgIcon}>{pkg.icon || unitIcon}</Text>
                   <Text style={styles.pkgName}>{pkg.name}</Text>
                   <Text style={styles.pkgCoins}>{total.toLocaleString()}</Text>
-                  <Text style={styles.pkgCoinsLabel}>coins</Text>
-                  {pkg.bonus > 0 && (
+                  <Text style={styles.pkgCoinsLabel}>{unit}</Text>
+                  {pkg.bonus > 0 && !isVipPack && (
                     <View style={styles.bonusPill}>
                       <Text style={styles.bonusText}>+{pkg.bonus} bonus</Text>
                     </View>

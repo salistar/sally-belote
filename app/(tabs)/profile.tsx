@@ -175,12 +175,15 @@ export default function ProfileScreen() {
               <Text style={styles.shopBtnText}>+</Text>
             </TouchableOpacity>
           </LinearGradient>
-          <LinearGradient colors={['#06B6D4', '#0891B2']} style={[styles.walletCard, { flex: 1 }]}>
+          <LinearGradient colors={['#EC4899', '#BE185D']} style={[styles.walletCard, { flex: 1 }]}>
             <Ionicons name="diamond" size={22} color="#fff" />
             <View style={{ flex: 1, marginLeft: 10 }}>
-              <Text style={styles.walletValue}>{user.diamonds ?? 0}</Text>
+              <Text style={styles.walletValue}>{(user as any).gems ?? user.diamonds ?? 0}</Text>
               <Text style={styles.walletLabel}>{t('walletDiamonds')}</Text>
             </View>
+            <TouchableOpacity style={styles.shopBtn} onPress={() => router.push('/shop?tab=gems')}>
+              <Text style={styles.shopBtnText}>+</Text>
+            </TouchableOpacity>
           </LinearGradient>
         </View>
 
