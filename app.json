@@ -30,7 +30,9 @@
       "usesCleartextTraffic": true,
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ],
       "config": {
         "googleMaps": {
@@ -51,10 +53,14 @@
     ],
     "newArchEnabled": true,
     "extra": {
-      "eas": {
-        "projectId": "sallycards-belote"
+      "usesCleartextTraffic": true,
+      "router": {
+        "origin": false
       },
-      "usesCleartextTraffic": true
-    }
+      "eas": {
+        "projectId": "05085663-e463-4489-bd47-8b41ff6cce62"
+      }
+    },
+    "owner": "idriss.kriouile"
   }
 }
