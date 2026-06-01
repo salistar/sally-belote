@@ -110,6 +110,20 @@
   "dailyChallengeReward": "+{{coins}} عملات",
   "simulation": "محاكاة",
   "simulationSub": "من 2 إلى 10 بوتات + مكالمة صوتية/مرئية",
+  "sectionMore": "المزيد",
+  "shortcutSportChallenge": "تحدي رياضي",
+  "shortcutFriends": "الأصدقاء",
+  "shortcutRewards": "المكافآت",
+  "shortcutInbox": "صندوق الوارد",
+  "shortcutHistorySport": "سجل التحديات الرياضية",
+  "annoncesTitle": "الإعلانات",
+  "annoncesNone": "لا توجد إعلانات.",
+  "annoncesTeamGain": "{{team}}: +{{points}} نقطة",
+  "belote": "بيلوت !",
+  "rebelote": "ريبيلوت !",
+  "diffEasy": "سهل",
+  "diffMedium": "متوسط",
+  "diffHard": "صعب",
   "statGames": "المباريات",
   "statWins": "الانتصارات",
   "statWinRate": "معدل الفوز",
@@ -210,5 +224,8 @@
     "body": "لم يأخذ أحد المزايدة بعد الجولتين. يتغير الموزع، إعادة توزيع إجبارية.",
     "again": "إعادة التوزيع",
     "continue": "متابعة"
-  }
+  },
+  "drawsShort": "ت",
+  "yourMove": "دورك",
+  "wallet": "المحفظة"
 }
