@@ -302,7 +302,7 @@ export default function ShopScreen() {
           <View style={styles.disclaimer}>
             <Ionicons name="information-circle-outline" size={16} color={palette.textSecondary} />
             <Text style={[styles.disclaimerText, { color: palette.textSecondary }]}>
-              Les Sally Coins sont une monnaie virtuelle, utilisables uniquement dans l\u2019app.
+              Les Sally Coins sont une monnaie virtuelle, utilisables uniquement dans l'app.
             </Text>
           </View>
         </ScrollView>

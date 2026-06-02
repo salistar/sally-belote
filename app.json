@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Belote",
+    "name": "Sally Belote",
     "slug": "belote",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,11 +8,11 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0A1535",
+      "backgroundColor": "#1E40AF",
       "dark": {
         "image": "./assets/splash.png",
         "resizeMode": "contain",
-        "backgroundColor": "#0A1535"
+        "backgroundColor": "#1E40AF"
       }
     },
     "scheme": "sallycards",
@@ -30,7 +30,7 @@
       "package": "com.sallycards.belote",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#2563EB"
+        "backgroundColor": "#3B82F6"
       },
       "usesCleartextTraffic": true,
       "permissions": [
@@ -66,7 +66,7 @@
         }
       ]
     ],
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "extra": {
       "usesCleartextTraffic": true,
       "router": {
