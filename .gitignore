@@ -53,3 +53,5 @@ junit.xml
 # EAS keystore (do NOT commit)
 credentials/
 credentials.json
+*.jks
+android/app/*.jks
