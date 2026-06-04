@@ -103,9 +103,9 @@ android {
         }
         release {
             storeFile file('sallycards-belote.jks')
-            storePassword 'SallyCards2026'
+            storePassword 'SallyCards2027'
             keyAlias 'sallycards-belote'
-            keyPassword 'SallyCards2026'
+            keyPassword 'SallyCards2027'
         }
     }
     buildTypes {
